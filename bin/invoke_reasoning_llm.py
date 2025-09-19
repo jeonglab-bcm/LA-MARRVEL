@@ -46,6 +46,9 @@ if __name__ == "__main__":
     except botocore.exceptions.EventStreamError as e:
         print(e)
         sys.exit(137)
+    except thinking_llm.client.exceptions.ThrottlingException as e:
+        print(e)
+        sys.exit(138)
     aimsg = full
 
     reasoning_content = aimsg.content[0]['reasoning_content']['text']
