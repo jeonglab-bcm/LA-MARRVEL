@@ -1,4 +1,4 @@
-params.io_dir = null // s3://dsw-jxlee-llm/250908
+params.io_dir = null // s3://jaeyeon-dev-aimllmrerank/250908
 
 String sanitizeS3Path(String s3Path) {
     if (!s3Path) return "unknown"
@@ -32,6 +32,7 @@ workflow {
 }
 
 process GET_PROMPTS {
+    tag "$input_dir"
     storeDir "./stored/${sanitizeS3Path(input_dir)}"
 
     input:
@@ -51,6 +52,7 @@ process INVOKE_REASONING_LLM {
     tag "$id"
     storeDir "./stored/reasoning_llm/"
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+    maxRetries 5
 
     input:
     tuple(
@@ -78,6 +80,8 @@ process INVOKE_REASONING_LLM {
 }
 
 process PUT_RESULT {
+    tag "$output_dir"
+
     input:
     path files
     val output_dir

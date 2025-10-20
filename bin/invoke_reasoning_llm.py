@@ -3,6 +3,7 @@ import sys
 import argparse
 import langchain_aws
 import botocore.exceptions
+import urllib3.exceptions
 
 thinking_params= {
     "thinking": {
@@ -49,6 +50,9 @@ if __name__ == "__main__":
     except thinking_llm.client.exceptions.ThrottlingException as e:
         print(e)
         sys.exit(138)
+    except urllib3.exceptions.ReadTimeoutError as e:
+        print(e)
+        sys.exit(139)
     aimsg = full
 
     reasoning_content = aimsg.content[0]['reasoning_content']['text']
