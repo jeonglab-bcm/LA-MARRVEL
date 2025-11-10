@@ -34,7 +34,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     with open(args.input) as f:    
         ai_content = f.read()
-    generank = llm.with_structured_output(Generank).with_retry(retry_if_exception_type=(pydantic.ValidationError,)).invoke(ai_content)
+    generank = llm.with_structured_output(Generank).with_retry(retry_if_exception_type=(pydantic.ValidationError,llm.client.exceptions.ThrottlingException,)).invoke(ai_content)
     main_content = pd.DataFrame(generank.model_dump()['results']).name.to_csv()
     with open(args.output, "w") as f:
         f.write(main_content)

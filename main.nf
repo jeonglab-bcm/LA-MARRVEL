@@ -51,7 +51,7 @@ process INVOKE_REASONING_LLM {
     maxForks 4
     tag "$id"
     storeDir "./stored/reasoning_llm/"
-    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+    errorStrategy { task.exitStatus in 137..150 ? 'retry' : 'terminate' }
     maxRetries 5
 
     input:
@@ -67,9 +67,12 @@ process INVOKE_REASONING_LLM {
     mkdir -p $id
     for i in {0..9}; do
         invoke_reasoning_llm.py \
-            --input "$prompt_file" \
-            --reasoning_output "$id/${id}.reasoning.\$i.md" \
-            --output "$id/${id}.output.\$i.md"
+           --input "$prompt_file" \
+           --reasoning_output "$id/${id}.reasoning.\$i.md" \
+           --output "$id/${id}.output.\$i.md"
+        # invoke_nonreasoning_llm.py \
+        #     --input "$prompt_file" \
+        #     --output "$id/${id}.output.\$i.md"
 
         invoke_prioritize_llm.py \
             --input "$id/${id}.output.\$i.md" \
