@@ -1,0 +1,7 @@
+pandas
+numpy
+langchain-aws
+python-dotenv
+botocore
+urllib3
+pydantic

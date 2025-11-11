@@ -18,7 +18,7 @@ Intermediate artifacts (prompts, LLM reasoning/output markdown, per-iteration ra
 
 ## Requirements
 - Nextflow 23.10+ and a Python 3.10 runtime available on worker nodes.
-- Python libraries: `pandas`, `numpy`, `langchain_aws`, `python-dotenv`, `botocore`, `urllib3`, `pydantic`.
+- Python dependencies listed in `requirements.txt` (install with `pip install -r requirements.txt` inside your virtual environment).
 - AWS Bedrock access to Claude Sonnet 4 reasoning model configured via standard AWS credentials or a `.env` file consumed by the helper scripts.
 
 ## Running
