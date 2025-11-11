@@ -1,0 +1,34 @@
+# Rerank Workflow
+
+This repository contains a Nextflow pipeline (`workflows/rerank`) that enriches candidate genes with phenotype metadata, generates structured LLM prompts, gathers multiple AI-driven prioritizations, and aggregates them into a consensus gene ranking for rare disease analysis.
+
+## Inputs
+- `--genecsv`: CSV exported from upstream AI_MARRVEL (>= v1.2.0-rc251107-1).
+- `--hpotxt`: Text file listing HPO identifiers (one per line) describing the proband.
+- Optional knobs: `--consideringgenes_g` (top-N genes per prompt), `--invocationnumber_n` (number of LLM votes), `--runid` (namespace for outputs).
+
+## Pipeline stages
+1. **generateHpodf** – maps supplied HPO IDs onto labels/definitions using `resources/hp.json`.
+2. **improveGeneCsv** – augments the gene table with HGNC/OMIM phenotypes, inheritance metadata, and `isTransHeterozygote` flags via the cached resources in `workflows/rerank/resources`.
+3. **generatePrompt** – builds a markdown prompt that embeds the curated HPO and gene tables (limited to the first `g` genes).
+4. **invokeLlms** – for each prompt iteration, calls `bin/invoke_reasoning_llm.py` to obtain a long-form analysis and `bin/invoke_prioritize_llm.py` to extract an ordered list of genes. Both scripts rely on `langchain_aws` with AWS Bedrock Claude access (credentials loaded through `.env`/environment variables).
+5. **aggregate** – combines every prioritized list with a Tideman ranked-pairs consensus to produce `${runid}.improved.reranked.gene.csv`.
+
+Intermediate artifacts (prompts, LLM reasoning/output markdown, per-iteration rankings) are copied into `published/<runid>/`.
+
+## Requirements
+- Nextflow 23.10+ and a Python 3.10 runtime available on worker nodes.
+- Python libraries: `pandas`, `numpy`, `langchain_aws`, `python-dotenv`, `botocore`, `urllib3`, `pydantic`.
+- AWS Bedrock access to Claude Sonnet 4 reasoning model configured via standard AWS credentials or a `.env` file consumed by the helper scripts.
+
+## Running
+```bash
+nextflow run workflows/rerank \
+  --genecsv data/proband.genes.csv \
+  --hpotxt data/proband.hpo.txt \
+  --consideringgenes_g 10 \
+  --invocationnumber_n 10 \
+  --runid proband_run
+```
+
+On completion, inspect `published/proband_run/` for prompt/LLM artifacts and `proband_run.improved.reranked.gene.csv` for the consensus prioritization.

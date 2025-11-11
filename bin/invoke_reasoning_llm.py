@@ -4,6 +4,9 @@ import argparse
 import langchain_aws
 import botocore.exceptions
 import urllib3.exceptions
+import dotenv
+
+dotenv.load_dotenv()
 
 thinking_params= {
     "thinking": {
@@ -13,8 +16,8 @@ thinking_params= {
 }
 
 thinking_llm = langchain_aws.ChatBedrockConverse(
-    provider = "anthropic",
-    model_id="arn:aws:bedrock:us-east-1:314146307595:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+    provider="anthropic",
+    model_id="arn:aws:bedrock:us-east-1:769006734761:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
     max_tokens=65536,
     additional_model_request_fields=thinking_params
 )
@@ -53,6 +56,9 @@ if __name__ == "__main__":
     except urllib3.exceptions.ReadTimeoutError as e:
         print(e)
         sys.exit(139)
+    except thinking_llm.client.exceptions.ServiceUnavailableException as e:
+        print(e)
+        sys.exit(140)
     aimsg = full
 
     reasoning_content = aimsg.content[0]['reasoning_content']['text']

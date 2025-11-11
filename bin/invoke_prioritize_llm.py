@@ -4,11 +4,16 @@ import argparse
 import pydantic
 import typing
 import pandas as pd
+import dotenv
+
+dotenv.load_dotenv()
+
 
 class GenerankItem(pydantic.BaseModel):
     excerpt: typing.List[str]
     name: str
     rank: int
+
 
 class Generank(pydantic.BaseModel):
     """
@@ -16,10 +21,12 @@ class Generank(pydantic.BaseModel):
     """
     results: typing.List[GenerankItem]
 
+
 llm = langchain_aws.ChatBedrockConverse(
-    provider = "anthropic",
-    model_id="arn:aws:bedrock:us-east-1:314146307595:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+    provider="anthropic",
+    model_id="arn:aws:bedrock:us-east-1:769006734761:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
 )
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
