@@ -3,7 +3,7 @@
 This repository contains a Nextflow pipeline (`workflows/rerank`) that enriches candidate genes with phenotype metadata, generates structured LLM prompts, gathers multiple AI-driven prioritizations, and aggregates them into a consensus gene ranking for rare disease analysis.
 
 ## Inputs
-- `--genecsv`: CSV exported from upstream AI_MARRVEL (>= v1.2.0-rc251107-1).
+- `--genecsv`: CSV exported from upstream AI_MARRVEL (>= v1.2.0-rc251111).
 - `--hpotxt`: Text file listing HPO identifiers (one per line) describing the proband.
 - Optional knobs: `--consideringgenes_g` (top-N genes per prompt), `--invocationnumber_n` (number of LLM votes), `--runid` (namespace for outputs).
 

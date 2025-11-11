@@ -168,7 +168,7 @@ process improveGeneCsv {
 }
 
 process invokeLlms {
-    maxForks 4
+    maxForks 2
     tag "$context.runid/$iteration"
     publishDir "published/$context.runid/llmoutputs", mode: 'copy'
     // storeDir "stored/llmoutputs"
