@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LA_MARRVEL_RERANK parameters",
+  "description": "Inputs for the rerank workflow.",
+  "type": "object",
+  "properties": {
+    "genecsv": {
+      "type": "string",
+      "description": "CSV exported from AI_MARRVEL containing candidate genes.",
+      "format": "file-path"
+    },
+    "hpotxt": {
+      "type": "string",
+      "description": "Text file listing proband HPO IDs (one per line).",
+      "format": "file-path"
+    },
+    "consideringgenes_g": {
+      "type": "integer",
+      "description": "Number of top genes to embed into each LLM prompt.",
+      "default": 10,
+      "minimum": 1
+    },
+    "invocationnumber_n": {
+      "type": "integer",
+      "description": "Number of prompt iterations / LLM votes.",
+      "default": 10,
+      "minimum": 1
+    },
+    "runid": {
+      "type": "string",
+      "description": "Namespace for workflow outputs.",
+      "default": "run1"
+    }
+  },
+  "required": [
+    "genecsv",
+    "hpotxt"
+  ]
+}

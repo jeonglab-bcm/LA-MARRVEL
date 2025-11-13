@@ -1,8 +1,8 @@
-params.genecsv = null
-params.hpotxt = null
-params.consideringgenes_g = 10
-params.invocationnumber_n = 10
-params.runid = "run1"
+nextflow.enable.dsl = 2
+
+include { validateParameters } from 'plugin/nf-schema'
+
+validateParameters()
 
 workflow {
     runid = params.runid
