@@ -49,7 +49,7 @@ process generatePrompt {
     cat <<EOF > ${context.runid}.prompt.md
     # Stub Prompt
 
-    This prompt was generated while running with `-with-stub`.
+    This prompt was generated while running with `-stub-run`.
     Run ID: ${context.runid}
     Considered Genes: ${context.consideringgenes_g}
     EOF

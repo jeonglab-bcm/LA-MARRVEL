@@ -52,7 +52,7 @@ process generateHpodf {
                 "id": hp_id,
                 "name": f"Stub term for {hp_id}",
                 "synonyms": "[]",
-                "definition": "Stub definition produced with -with-stub"
+                "definition": "Stub definition produced with -stub-run"
             })
     """
 }

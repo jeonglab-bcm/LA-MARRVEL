@@ -37,12 +37,12 @@ nextflow run workflows/rerank \
 
 On completion, inspect `published/proband_run/` for prompt/LLM artifacts and `proband_run.improved.reranked.gene.csv` for the consensus prioritization.
 
-### Dry runs with `-with-stub`
+### Dry runs with `-stub-run`
 Every process in the pipeline has a lightweight `stub` block so you can validate the control-flow without AWS credentials or large resource downloads. Use the bundled nf-test fixtures and enable stub mode:
 
 ```bash
 nextflow run workflows/rerank \
-  -with-stub \
+  -stub-run \
   --genecsv tests/fixtures/nf-test/genes/nf_test_run.improved.gene.csv \
   --hpotxt tests/fixtures/nf-test/hpo/proband.hpos.txt \
   --consideringgenes_g 10 \
