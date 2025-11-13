@@ -1,0 +1,83 @@
+name: Nextflow Stub Run
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: stub-run-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stub-run:
+    runs-on: ubuntu-latest
+    env:
+      NXF_VER: "24.04.4"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache Nextflow state
+        uses: actions/cache@v4
+        with:
+          path: ~/.nextflow
+          key: nextflow-${{ runner.os }}-${{ hashFiles('workflows/rerank/nextflow.config') }}
+          restore-keys: |
+            nextflow-${{ runner.os }}-
+
+      - name: Install Nextflow
+        run: |
+          curl -s https://get.nextflow.io | bash
+          sudo mv nextflow /usr/local/bin/nextflow
+          nextflow -version
+
+      - name: Run rerank workflow in stub mode
+        run: |
+          nextflow run workflows/rerank \
+            -stub-run \
+            --genecsv tests/fixtures/nf-test/genes/nf_test_run.improved.gene.csv \
+            --hpostxt tests/fixtures/nf-test/hpo/proband.hpos.txt
+
+      - name: Check Nextflow log
+        run: |
+          grep -q "Workflow completed" .nextflow.log
+
+      - name: Summarize published rankings
+        if: always()
+        run: |
+          {
+            echo "### Published artifacts"
+            if [ -d published ]; then
+              echo '```'
+              tree published
+              echo '```'
+            else
+              echo "No published directory was created."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload workflow log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextflow-log
+          path: .nextflow.log
+
+      - name: Upload published artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-stub-run
+          path: published
+          if-no-files-found: ignore
