@@ -21,7 +21,9 @@ Intermediate artifacts (prompts, LLM reasoning/output markdown, per-iteration ra
 ## Requirements
 - Nextflow 23.10+ and a Python 3.10 runtime available on worker nodes.
 - Python dependencies listed in `requirements.txt` (install with `pip install -r requirements.txt` inside your virtual environment).
-- AWS Bedrock access to Claude Sonnet 4 reasoning model configured via standard AWS credentials or a `.env` file consumed by the helper scripts.
+- AWS Bedrock access to Claude Sonnet 4 reasoning model configured via standard AWS credentials or a `.env` file consumed by the helper scripts. See `.env.example` for the credential variables the scripts expect.
+
+The helper scripts invoke `dotenv.load_dotenv()` before touching Bedrock (`bin/invoke_reasoning_llm.py`, `bin/invoke_prioritize_llm.py`), so copy `.env.example` to `.env` and fill in the AWS identity that can reach Claude Sonnet 4 (the template lists `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_DEFAULT_REGION`).
 
 ## Running
 ```bash
