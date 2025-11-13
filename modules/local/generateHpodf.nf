@@ -1,0 +1,58 @@
+process generateHpodf {
+    cpus 1
+
+    // publishDir "published/$context.runid/hpodf", mode: 'copy'
+    tag "$context.runid"
+
+    input:
+    path inputhpo, name: 'input.hpos.txt'
+    val context
+
+    output:
+    path "./${context.runid}.hpodf.csv"
+
+    script:
+    """
+    #!/usr/bin/env python
+
+    import pandas as pd
+    import json
+
+    with open("${projectDir}/resources/hp.json") as file:
+        data = json.load(file)
+
+    wholehpodf = pd.DataFrame([{
+        "id": node['id'].split('/')[-1],
+        "name": node['lbl'],
+        "synonyms": [syn.get('val') for syn in node.get('meta', {}).get('synonyms', [])],
+        "definition": node.get('meta', {}).get('definition', {}).get('val', ''),
+    } for node in data['graphs'][0]['nodes'] if node.get("type") == "CLASS"])
+    wholehpodf["id"] = wholehpodf["id"].str.replace("HP_", "HP:")
+
+    if __name__ == "__main__":
+        hpodf = pd.read_csv(f"input.hpos.txt", header=None, names=["id"]).merge(wholehpodf, on="id", how="left")
+        hpodf.to_csv("./${context.runid}.hpodf.csv", index=False)
+    """
+
+    stub:
+    """
+    #!/usr/bin/env python
+    import csv
+    from pathlib import Path
+
+    ids = [line.strip() for line in Path("input.hpos.txt").read_text().splitlines() if line.strip()]
+    if not ids:
+        ids = ["HP:STUB"]
+
+    with open("${context.runid}.hpodf.csv", "w", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["id", "name", "synonyms", "definition"])
+        writer.writeheader()
+        for hp_id in ids:
+            writer.writerow({
+                "id": hp_id,
+                "name": f"Stub term for {hp_id}",
+                "synonyms": "[]",
+                "definition": "Stub definition produced with -with-stub"
+            })
+    """
+}
