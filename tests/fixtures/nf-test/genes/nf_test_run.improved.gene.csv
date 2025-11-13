@@ -1,0 +1,3 @@
+,geneSymbol,varId,geneEnsId,zyg,predict,IMPACT_text,Consequence,clinvarSignDesc,CADD_PHRED,gnomadAF,phenoDict,isTransHeterozygote
+0,GENE1,"['var1']",ENSG000001,het,Pathogenic,"missense_variant","c.123A>T","Pathogenic",25,0.0001,"{""StubPhenotype1"": {""inheritance"": ""Autosomal dominant"", ""clinicalSynopsis"": [""Stub clinical text""]}}",No
+1,GENE2,"['var2','var3']",ENSG000002,hom,Benign,"frameshift_variant","c.456del","Likely benign",10,0.01,"{""StubPhenotype2"": {""inheritance"": ""Autosomal recessive"", ""clinicalSynopsis"": [""Another stub description""]}}",Yes

@@ -44,9 +44,9 @@ process generateHpodf {
     val context
 
     output:
-    // val(runid)
     path "./${context.runid}.hpodf.csv"
 
+    script:
     """
     #!/usr/bin/env python
 
@@ -68,6 +68,28 @@ process generateHpodf {
         hpodf = pd.read_csv(f"input.hpos.txt", header=None, names=["id"]).merge(wholehpodf, on="id", how="left")
         hpodf.to_csv("./${context.runid}.hpodf.csv", index=False)
     """
+
+    stub:
+    """
+    #!/usr/bin/env python
+    import csv
+    from pathlib import Path
+
+    ids = [line.strip() for line in Path("input.hpos.txt").read_text().splitlines() if line.strip()]
+    if not ids:
+        ids = ["HP:STUB"]
+
+    with open("${context.runid}.hpodf.csv", "w", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["id", "name", "synonyms", "definition"])
+        writer.writeheader()
+        for hp_id in ids:
+            writer.writerow({
+                "id": hp_id,
+                "name": f"Stub term for {hp_id}",
+                "synonyms": "[]",
+                "definition": "Stub definition produced with -with-stub"
+            })
+    """
 }
 
 process generatePrompt {
@@ -84,6 +106,7 @@ process generatePrompt {
     output:
     path "./${context.runid}.prompt.md"
 
+    script:
     """
     #!/usr/bin/env python
 
@@ -114,6 +137,17 @@ process generatePrompt {
     with open("./${context.runid}.prompt.md", "w") as f:
         f.write(prompt)
     """
+
+    stub:
+    """
+    cat <<EOF > ${context.runid}.prompt.md
+    # Stub Prompt
+
+    This prompt was generated while running with `-with-stub`.
+    Run ID: ${context.runid}
+    Considered Genes: ${context.consideringgenes_g}
+    EOF
+    """
 }
 
 process improveGeneCsv {
@@ -127,6 +161,7 @@ process improveGeneCsv {
     output:
     path "./${context.runid}.improved.gene.csv"
 
+    script:
     """
     #!/usr/bin/env python
     import pandas as pd
@@ -164,6 +199,28 @@ process improveGeneCsv {
         genedf['isTransHeterozygote'] = genedf.varId.apply(lambda x: "Yes" if len(ast.literal_eval(x)) > 1 else "No")
 
         genedf.to_csv("${context.runid}.improved.gene.csv")
+    """
+
+    stub:
+    """
+    #!/usr/bin/env python
+    import csv
+
+    with open("gene.csv", newline="") as fh:
+        reader = csv.DictReader(fh)
+        input_fieldnames = reader.fieldnames or []
+        rows = list(reader)
+
+    out_fields = list(dict.fromkeys(input_fieldnames + ["phenoDict", "isTransHeterozygote"]))
+
+    for row in rows:
+        row.setdefault("phenoDict", "{}")
+        row.setdefault("isTransHeterozygote", "No")
+
+    with open("${context.runid}.improved.gene.csv", "w", newline="") as out:
+        writer = csv.DictWriter(out, fieldnames=out_fields)
+        writer.writeheader()
+        writer.writerows(rows)
     """
 }
 
@@ -204,18 +261,27 @@ process invokeLlms {
         --output "${context.runid}.prioritized.${iteration}.csv"
     """
 
-    // stub:
-    // """
-    // touch ${context.runid}.reasoning.${iteration}.md
-    // touch ${context.runid}.output.${iteration}.md
-    // touch ${context.runid}.prioritized.${iteration}.csv
-    // """
+    stub:
+    """
+    cat <<EOF > ${context.runid}.reasoning.${iteration}.md
+    Stub reasoning output for iteration ${iteration}
+    EOF
+
+    cat <<EOF > ${context.runid}.output.${iteration}.md
+    Stub final output for iteration ${iteration}
+    EOF
+
+    cat <<EOF > ${context.runid}.prioritized.${iteration}.csv
+    name
+    STUB_GENE_${iteration}
+    EOF
+    """
 }
 
 process aggregate {
     cpus 1
     tag "$context.runid"
-    publishDir "published/$context.runid/rereanked_gene", mode: 'copy'
+    publishDir "published/$context.runid/reranked_gene", mode: 'copy'
 
     input:
     path genecsv, name: "gene.csv"
@@ -225,7 +291,7 @@ process aggregate {
     output:
     path "./${context.runid}.improved.reranked.gene.csv"
 
-
+    script:
     """
     #!/usr/bin/env python
     import pandas as pd
@@ -356,5 +422,10 @@ process aggregate {
 
     reranked_genedf.to_csv("${context.runid}.improved.reranked.gene.csv")
 
+    """
+
+    stub:
+    """
+    cp gene.csv ${context.runid}.improved.reranked.gene.csv
     """
 }

@@ -9,7 +9,7 @@
       "description": "CSV exported from AI_MARRVEL containing candidate genes.",
       "format": "file-path"
     },
-    "hpotxt": {
+    "hpostxt": {
       "type": "string",
       "description": "Text file listing proband HPO IDs (one per line).",
       "format": "file-path"
@@ -34,6 +34,6 @@
   },
   "required": [
     "genecsv",
-    "hpotxt"
+    "hpostxt"
   ]
 }
