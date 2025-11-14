@@ -1,7 +1,7 @@
 process invokeLlms {
     maxForks 2
-    tag "$context.runid/$iteration"
-    publishDir "published/$context.runid/llmoutputs", mode: 'copy'
+    tag "$context.run_id/$iteration"
+    publishDir "published/$context.run_id/llmoutputs", mode: 'copy'
     // storeDir "stored/llmoutputs"
     errorStrategy { task.exitStatus in 137..150 ? 'retry' : 'terminate' }
     maxRetries 5
@@ -24,28 +24,28 @@ process invokeLlms {
     """
     $moduleDir/../../bin/invoke_reasoning_llm.py \
         --input "$prompt_file" \
-        --reasoning_output "${context.runid}.reasoning.${iteration}.md" \
-        --output "${context.runid}.output.${iteration}.md"
+        --reasoning_output "${context.run_id}.reasoning.${iteration}.md" \
+        --output "${context.run_id}.output.${iteration}.md"
     # invoke_nonreasoning_llm.py \
     #     --input "$prompt_file" \
-    #     --output "${context.runid}.output.${iteration}.md"
+    #     --output "${context.run_id}.output.${iteration}.md"
 
     $moduleDir/../../bin/invoke_prioritize_llm.py \
-        --input "${context.runid}.output.${iteration}.md" \
-        --output "${context.runid}.prioritized.${iteration}.csv"
+        --input "${context.run_id}.output.${iteration}.md" \
+        --output "${context.run_id}.prioritized.${iteration}.csv"
     """
 
     stub:
     """
-    cat <<EOF > ${context.runid}.reasoning.${iteration}.md
+    cat <<EOF > ${context.run_id}.reasoning.${iteration}.md
     Stub reasoning output for iteration ${iteration}
     EOF
 
-    cat <<EOF > ${context.runid}.output.${iteration}.md
+    cat <<EOF > ${context.run_id}.output.${iteration}.md
     Stub final output for iteration ${iteration}
     EOF
 
-    cat <<EOF > ${context.runid}.prioritized.${iteration}.csv
+    cat <<EOF > ${context.run_id}.prioritized.${iteration}.csv
     name
     STUB_GENE_${iteration}
     EOF

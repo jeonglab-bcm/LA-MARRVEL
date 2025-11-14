@@ -1,7 +1,7 @@
 process aggregate {
     cpus 1
-    tag "$context.runid"
-    publishDir "published/$context.runid/reranked_gene", mode: 'copy'
+    tag "$context.run_id"
+    publishDir "published/$context.run_id/reranked_gene", mode: 'copy'
 
     input:
     path genecsv, name: "gene.csv"
@@ -9,7 +9,7 @@ process aggregate {
     val context
 
     output:
-    path "./${context.runid}.improved.reranked.gene.csv"
+    path "./${context.run_id}.improved.reranked.gene.csv"
 
     script:
     """
@@ -108,7 +108,7 @@ process aggregate {
         # Build COMPLETE ballots for Tideman: prioritized list + remaining genes in original order
         ballots = []
         for i in range(N):
-            df_i = pd.read_csv(f"${context.runid}.prioritized.{i}.csv")
+            df_i = pd.read_csv(f"${context.run_id}.prioritized.{i}.csv")
             order = df_i["name"].drop_duplicates(keep='first').tolist()
             full_order = order + [c for c in candidates if c not in order]
 
@@ -140,12 +140,12 @@ process aggregate {
 
     reranked_genedf = get_reranked_genedf()
 
-    reranked_genedf.to_csv("${context.runid}.improved.reranked.gene.csv")
+    reranked_genedf.to_csv("${context.run_id}.improved.reranked.gene.csv")
 
     """
 
     stub:
     """
-    cp gene.csv ${context.runid}.improved.reranked.gene.csv
+    cp gene.csv ${context.run_id}.improved.reranked.gene.csv
     """
 }

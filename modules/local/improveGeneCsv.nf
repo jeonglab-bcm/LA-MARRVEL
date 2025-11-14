@@ -1,13 +1,13 @@
 process improveGeneCsv {
     cpus 1
-    tag "$context.runid"
+    tag "$context.run_id"
 
     input:
     path genecsv, name: "gene.csv"
     val context
 
     output:
-    path "./${context.runid}.improved.gene.csv"
+    path "./${context.run_id}.improved.gene.csv"
 
     script:
     """
@@ -46,7 +46,7 @@ process improveGeneCsv {
         genedf['phenoDict'] = genedf['geneEnsId'].map(ensid2phenotypes).combine(genedf['geneSymbol'].map(genesymbol2phenotypes), lambda a, b: as_dict(a) | as_dict(b))
         genedf['isTransHeterozygote'] = genedf.varId.apply(lambda x: "Yes" if len(ast.literal_eval(x)) > 1 else "No")
 
-        genedf.to_csv("${context.runid}.improved.gene.csv")
+        genedf.to_csv("${context.run_id}.improved.gene.csv")
     """
 
     stub:
@@ -65,7 +65,7 @@ process improveGeneCsv {
         row.setdefault("phenoDict", "{}")
         row.setdefault("isTransHeterozygote", "No")
 
-    with open("${context.runid}.improved.gene.csv", "w", newline="") as out:
+    with open("${context.run_id}.improved.gene.csv", "w", newline="") as out:
         writer = csv.DictWriter(out, fieldnames=out_fields)
         writer.writeheader()
         writer.writerows(rows)

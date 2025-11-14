@@ -10,12 +10,12 @@ include { aggregate } from '../../modules/local/aggregate.nf'
 validateParameters()
 
 workflow {
-    runid = params.runid
+    run_id = params.run_id
     invocationnumber_n = params.invocationnumber_n
     consideringgenes_g = params.consideringgenes_g
 
     context = [
-        "runid": runid,
+        "run_id": run_id,
         "invocationnumber_n": invocationnumber_n,
         "consideringgenes_g": consideringgenes_g,
     ]

@@ -8,16 +8,16 @@ This repository contains a Nextflow pipeline (`workflows/rerank`) that enriches 
 ## Inputs
 - `--genecsv`: CSV exported from upstream AI_MARRVEL (>= v1.2.0-rc251111).
 - `--hpotxt`: Text file listing HPO identifiers (one per line) describing the proband.
-- Optional knobs: `--consideringgenes_g` (top-N genes per prompt), `--invocationnumber_n` (number of LLM votes), `--runid` (namespace for outputs).
+- Optional knobs: `--consideringgenes_g` (top-N genes per prompt), `--invocationnumber_n` (number of LLM votes), `--run_id` (namespace for outputs).
 
 ## Pipeline stages
 1. **generateHpodf** – maps supplied HPO IDs onto labels/definitions using `resources/hp.json`.
 2. **improveGeneCsv** – augments the gene table with HGNC/OMIM phenotypes, inheritance metadata, and `isTransHeterozygote` flags via the cached resources in `workflows/rerank/resources`.
 3. **generatePrompt** – builds a markdown prompt that embeds the curated HPO and gene tables (limited to the first `g` genes).
 4. **invokeLlms** – for each prompt iteration, calls `bin/invoke_reasoning_llm.py` to obtain a long-form analysis and `bin/invoke_prioritize_llm.py` to extract an ordered list of genes. Both scripts rely on `langchain_aws` with AWS Bedrock Claude access (credentials loaded through `.env`/environment variables).
-5. **aggregate** – combines every prioritized list with a Tideman ranked-pairs consensus to produce `${runid}.improved.reranked.gene.csv`.
+5. **aggregate** – combines every prioritized list with a Tideman ranked-pairs consensus to produce `${run_id}.improved.reranked.gene.csv`.
 
-Intermediate artifacts (prompts, LLM reasoning/output markdown, per-iteration rankings) are copied into `published/<runid>/`.
+Intermediate artifacts (prompts, LLM reasoning/output markdown, per-iteration rankings) are copied into `published/<run_id>/`.
 
 ## Requirements
 - Nextflow 23.10+ and a Python 3.10 runtime available on worker nodes.
@@ -33,10 +33,10 @@ nextflow run workflows/rerank \
   --hpotxt data/proband.hpo.txt \
   --consideringgenes_g 10 \
   --invocationnumber_n 10 \
-  --runid proband_run
+  --run_id proband_run
 ```
 
-On completion, inspect `published/proband_run/` for prompt/LLM artifacts and `proband_run.improved.reranked.gene.csv` for the consensus prioritization.
+On completion, inspect `published/proband_run/` for prompt/LLM artifacts and `proband_run.improved.reranked.gene.csv` for the consensus prioritization (replace `proband_run` with your chosen `--run_id`).
 
 ### Dry runs with `-stub-run`
 Every process in the pipeline has a lightweight `stub` block so you can validate the control-flow without AWS credentials or large resource downloads. Use the bundled nf-test fixtures and enable stub mode:
@@ -48,7 +48,7 @@ nextflow run workflows/rerank \
   --hpotxt tests/fixtures/nf-test/hpo/proband.hpos.txt \
   --consideringgenes_g 10 \
   --invocationnumber_n 10 \
-  --runid stub_demo
+  --run_id stub_demo
 ```
 
 The run finishes quickly, emits placeholder markdown/CSV artifacts, and exercises every channel/combiner so you can iterate on workflow logic even when the full dependencies are unavailable.

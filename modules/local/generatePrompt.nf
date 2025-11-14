@@ -1,8 +1,8 @@
 process generatePrompt {
     cpus 1
 
-    publishDir "published/$context.runid/prompt", mode: 'copy'
-    tag "$context.runid"
+    publishDir "published/$context.run_id/prompt", mode: 'copy'
+    tag "$context.run_id"
 
     input:
     path hpodf, name: 'hpodf.csv'
@@ -10,7 +10,7 @@ process generatePrompt {
     val context
 
     output:
-    path "./${context.runid}.prompt.md"
+    path "./${context.run_id}.prompt.md"
 
     script:
     """
@@ -40,17 +40,17 @@ process generatePrompt {
     ```
     \""".strip()
 
-    with open("./${context.runid}.prompt.md", "w") as f:
+    with open("./${context.run_id}.prompt.md", "w") as f:
         f.write(prompt)
     """
 
     stub:
     """
-    cat <<EOF > ${context.runid}.prompt.md
+    cat <<EOF > ${context.run_id}.prompt.md
     # Stub Prompt
 
     This prompt was generated while running with `-stub-run`.
-    Run ID: ${context.runid}
+    Run ID: ${context.run_id}
     Considered Genes: ${context.consideringgenes_g}
     EOF
     """

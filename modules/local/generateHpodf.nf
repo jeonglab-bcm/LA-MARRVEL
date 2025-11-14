@@ -1,15 +1,15 @@
 process generateHpodf {
     cpus 1
 
-    // publishDir "published/$context.runid/hpodf", mode: 'copy'
-    tag "$context.runid"
+    // publishDir "published/$context.run_id/hpodf", mode: 'copy'
+    tag "$context.run_id"
 
     input:
     path inputhpo, name: 'input.hpos.txt'
     val context
 
     output:
-    path "./${context.runid}.hpodf.csv"
+    path "./${context.run_id}.hpodf.csv"
 
     script:
     """
@@ -31,7 +31,7 @@ process generateHpodf {
 
     if __name__ == "__main__":
         hpodf = pd.read_csv(f"input.hpos.txt", header=None, names=["id"]).merge(wholehpodf, on="id", how="left")
-        hpodf.to_csv("./${context.runid}.hpodf.csv", index=False)
+        hpodf.to_csv("./${context.run_id}.hpodf.csv", index=False)
     """
 
     stub:
@@ -44,7 +44,7 @@ process generateHpodf {
     if not ids:
         ids = ["HP:STUB"]
 
-    with open("${context.runid}.hpodf.csv", "w", newline="") as fh:
+    with open("${context.run_id}.hpodf.csv", "w", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=["id", "name", "synonyms", "definition"])
         writer.writeheader()
         for hp_id in ids:
