@@ -1,11 +1,11 @@
 
-params.inputpath = "./stored/251217/input/*/{genedf.csv,hpos.txt}"
-params.max_parallel = 1
+params.inputpath = "./stored/251223/input/*/{genedf.csv,hpos.txt}"
+params.max_parallel = 2
 
 workflow {
     input_pairs_ch = Channel
         .fromFilePairs(params.inputpath, flat: true)
-        .map { dir, genecsv, hpos -> 
+        .map { dir, genecsv, hpos ->
             def runId = genecsv.parent.name
             [runId, genecsv, hpos]
         }
@@ -34,7 +34,8 @@ process RUN_CASE {
     nextflow run $projectDir/workflows/rerank/ \
         --genecsv "${genecsv}" \
         --hpostxt "${hpos}" \
-        --run_id "${runId}"
+        --run_id "${runId}" \
+        --consideringgenes_g 20
 
     mv published/$runId $runId
     """
