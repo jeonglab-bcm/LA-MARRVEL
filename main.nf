@@ -1,6 +1,7 @@
 
 params.inputpath = "./stored/251223/input/*/{genedf.csv,hpos.txt}"
 params.max_parallel = 2
+params.consideringgenes_g = 20
 
 workflow {
     input_pairs_ch = Channel
@@ -13,7 +14,7 @@ workflow {
         .flatten()
         .buffer(size: 3)
 
-    // Run rerank workflow for each pair
+    // Run rerank workflow for each pair    
     RUN_CASE(input_pairs_ch)
 }
 
@@ -35,7 +36,7 @@ process RUN_CASE {
         --genecsv "${genecsv}" \
         --hpostxt "${hpos}" \
         --run_id "${runId}" \
-        --consideringgenes_g 20
+        --consideringgenes_g ${params.consideringgenes_g}
 
     mv published/$runId $runId
     """
