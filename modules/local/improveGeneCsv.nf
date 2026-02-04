@@ -15,6 +15,9 @@ process improveGeneCsv {
     import pandas as pd
     import json
     import ast
+    from packaging.version import Version
+
+    assert Version(pd.__version__) >= Version("3.0.0") # NOTE(JL): series.to_frame() has been changed, https://github.com/pandas-dev/pandas/pull/58018
 
     with open("${projectDir}/resources/gene_omim.json") as f:
         gene_omim = json.loads(f.read())
@@ -26,7 +29,7 @@ process improveGeneCsv {
     genesymbol2phenotypes = genesymbol2phenotypes[~genesymbol2phenotypes.index.duplicated(keep='last')]
     g2p = genesymbol2phenotypes.explode().to_frame()
     g2p = g2p[~g2p.phenotypes.isna()]
-    g2p = g2p.reset_index().join(pd.json_normalize(g2p.phenotypes)).drop(columns = ["phenotypes", "mimNumber"])
+    g2p = g2p.join(pd.json_normalize(g2p.phenotypes)).drop(columns = ["phenotypes", "mimNumber"])
     g2p["phenotypeMimNumber"] = g2p.phenotypeMimNumber.apply(lambda x: f"OMIM:{int(x)}" if not pd.isna(x) else None)
     g2p = g2p.merge(d2pdf, left_on="phenotypeMimNumber", right_index=True, how='left')
     g2p["phenoDict"] = g2p.apply(lambda row: { row.phenotype: {"inheritance": row.phenotypeInheritance, "clinicalSynopsis": row.termnames } }, axis=1)
