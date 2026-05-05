@@ -11,7 +11,8 @@ process improveGeneCsv {
 
     script:
     """
-    #!/usr/bin/env python
+    #!/usr/bin/env -S uv run --quiet --script
+    
     import pandas as pd
     import json
     import ast

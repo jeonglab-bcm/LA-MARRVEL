@@ -1,6 +1,6 @@
 pandas
 numpy
-langchain-aws
+openai
 python-dotenv
 botocore
 urllib3

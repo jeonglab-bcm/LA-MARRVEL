@@ -1,7 +1,10 @@
 
-params.inputpath = "./stored/251223/input/*/{genedf.csv,hpos.txt}"
-params.max_parallel = 2
-params.consideringgenes_g = 20
+params.inputpath = "/home/zache/Data/LA-MARRVEL/*/*.{gene.csv,hpos.txt}"
+params.max_parallel = 1
+params.consideringgenes_g = 100
+params.model = "gemma4:26b"
+params.model_url = "http://0.0.0.0:11435/v1"
+params.invocationnumber_n = 10
 
 workflow {
     input_pairs_ch = Channel
@@ -36,7 +39,11 @@ process RUN_CASE {
         --genecsv "${genecsv}" \
         --hpostxt "${hpos}" \
         --run_id "${runId}" \
-        --consideringgenes_g ${params.consideringgenes_g}
+        --consideringgenes_g ${params.consideringgenes_g} \
+        --invocationnumber_n ${params.invocationnumber_n} \
+        --model "${params.model}" \
+        --model_url "${params.model_url}" \
+
 
     mv published/$runId $runId
     """

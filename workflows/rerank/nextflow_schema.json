@@ -30,6 +30,14 @@
       "type": "string",
       "description": "Namespace for workflow outputs.",
       "default": "run1"
+    },
+    "model": {
+      "type": "string",
+      "description": "Model ID to pass to the LLM inference scripts (overrides DEFAULT_LOCAL_MODEL env var)."
+    },
+    "model_url": {
+      "type": "string",
+      "description": "URL for the LLM inference API endpoint (overrides DEFAULT_LOCAL_MODEL env var)."
     }
   },
   "required": [

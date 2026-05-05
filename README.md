@@ -20,7 +20,7 @@ This repository contains a Nextflow pipeline (`workflows/rerank`) that enriches 
 Intermediate artifacts (prompts, LLM reasoning/output markdown, per-iteration rankings) are copied into `published/<run_id>/`.
 
 ## Requirements
-- Nextflow 23.10+ and a Python 3.10 runtime available on worker nodes.
+- Nextflow 23.10+ and a Python 3.11 runtime available on worker nodes.
 - Python dependencies listed in `requirements.txt` (install with `pip install -r requirements.txt` inside your virtual environment).
 - AWS Bedrock access to Claude Sonnet 4 reasoning model configured via standard AWS credentials or a `.env` file consumed by the helper scripts. See `.env.example` for the credential variables the scripts expect.
 
