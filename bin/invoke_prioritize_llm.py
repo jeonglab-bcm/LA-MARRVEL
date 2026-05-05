@@ -61,17 +61,20 @@ if __name__ == "__main__":
         parser.error("--model is required or DEFAULT_LOCAL_MODEL must be set")
     with open(args.input) as f:
         ai_content = f.read()
+    name_col = 'name'
     if args.gene_csv:
         gene_df = pd.read_csv(args.gene_csv)
         gene_list = gene_df['geneSymbol'].tolist()
+        gene_literal = typing.Union[tuple(typing.Literal[g] for g in gene_list)]
         class GenerankItem(pydantic.BaseModel):
             excerpt: typing.List[str] = pydantic.Field(..., description = "A list of excerpts from the literature that support the gene's relevance to the disease.")
-            gene_name: typing.Literal[*gene_list] = pydantic.Field(..., description = "The gene's name.")
+            gene_name: gene_literal = pydantic.Field(..., description = "The gene's name.")
             rank: int = pydantic.Field(..., description = "The rank of the gene, with 1 being the highest priority.")
         class Generank(pydantic.BaseModel):
             results: typing.List[GenerankItem]
+        name_col = 'gene_name'
 
     generank = invoke(ai_content, args.model)
-    main_content = pd.DataFrame(generank.model_dump()['results']).gene_name.to_csv()
+    main_content = pd.DataFrame(generank.model_dump()['results'])[name_col].to_csv()
     with open(args.output, "w") as f:
         f.write(main_content)
