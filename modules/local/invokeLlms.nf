@@ -1,5 +1,5 @@
 process invokeLlms {
-    maxForks 2
+    maxForks 1
     tag "$context.run_id/$iteration"
     publishDir "published/$context.run_id/llmoutputs", mode: 'copy'
     // storeDir "stored/llmoutputs"
@@ -11,6 +11,7 @@ process invokeLlms {
         val(iteration),
         path(prompt_file),
     )
+    path gene_csv
     val context
 
     output:
@@ -25,14 +26,19 @@ process invokeLlms {
     $moduleDir/../../bin/invoke_reasoning_llm.py \
         --input "$prompt_file" \
         --reasoning_output "${context.run_id}.reasoning.${iteration}.md" \
-        --output "${context.run_id}.output.${iteration}.md"
+        --output "${context.run_id}.output.${iteration}.md" \
+        --model "${context.model}" \
+        --model_url "${context.model_url}"
     # invoke_nonreasoning_llm.py \
     #     --input "$prompt_file" \
     #     --output "${context.run_id}.output.${iteration}.md"
 
     $moduleDir/../../bin/invoke_prioritize_llm.py \
         --input "${context.run_id}.output.${iteration}.md" \
-        --output "${context.run_id}.prioritized.${iteration}.csv"
+        --gene_csv "${gene_csv}" \
+        --output "${context.run_id}.prioritized.${iteration}.csv" \
+        --model "${context.model}" \
+        --model_url "${context.model_url}"
     """
 
     stub:

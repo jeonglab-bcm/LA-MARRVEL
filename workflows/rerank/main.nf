@@ -13,11 +13,15 @@ workflow {
     run_id = params.run_id
     invocationnumber_n = params.invocationnumber_n
     consideringgenes_g = params.consideringgenes_g
+    model = params.model
+    model_url = params.model_url
 
     context = [
         "run_id": run_id,
         "invocationnumber_n": invocationnumber_n,
         "consideringgenes_g": consideringgenes_g,
+        "model": model,
+        "model_url": model_url,
     ]
 
     genecsv = Channel.fromPath(params.genecsv)
@@ -33,7 +37,7 @@ workflow {
             (0..<invocationnumber_n).collect { iteration -> tuple(iteration, file) }
         }
 
-    llmoutputs = invokeLlms(prompt_runs, context).collect()
+    llmoutputs = invokeLlms(prompt_runs, improvedgenecsv.first(), context).collect()
 
     improvedrerankedgenecsv = aggregate(improvedgenecsv, llmoutputs, context)
 }

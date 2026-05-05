@@ -13,7 +13,7 @@ process aggregate {
 
     script:
     """
-    #!/usr/bin/env python
+    #!/usr/bin/env -S uv run --quiet --script
     import pandas as pd
     import numpy as np
 
@@ -109,7 +109,7 @@ process aggregate {
         ballots = []
         for i in range(N):
             df_i = pd.read_csv(f"${context.run_id}.prioritized.{i}.csv")
-            order = df_i["name"].drop_duplicates(keep='first').tolist()
+            order = df_i["gene_name"].drop_duplicates(keep='first').tolist()
             full_order = order + [c for c in candidates if c not in order]
 
             # Convert to a ranking Series (0 = best) for compatibility with tideman_ranked_pairs
