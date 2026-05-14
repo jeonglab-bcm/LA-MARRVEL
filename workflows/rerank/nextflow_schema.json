@@ -37,7 +37,7 @@
     "consideringgenes_g": {
       "type": "integer",
       "description": "Number of top genes to embed into each LLM prompt.",
-      "default": 10,
+      "default": 100,
       "minimum": 1
     },
     "invocationnumber_n": {
