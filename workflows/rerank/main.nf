@@ -24,7 +24,6 @@ workflow {
         genecsv = Channel.fromPath(params.genecsv)
     } else {
         log.info "No --genecsv provided, generating from --input_vcf via AIMARRVEL..."
-        log.info "AIMARRVEL outputs will be stored in ${params.aim_store_dir}"
         installAIMARRVELDeps(context)
         cloneAIMARRVEL(context)
         genecsv = runAIMARRVEL(
@@ -32,6 +31,7 @@ workflow {
             installAIMARRVELDeps.out.aimdata,
             Channel.fromPath(params.input_vcf),
             Channel.fromPath(params.hpostxt),
+            Channel.fromPath(params.aim_store_dir),
             context
         )
     }
