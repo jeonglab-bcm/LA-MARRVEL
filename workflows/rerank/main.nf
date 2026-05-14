@@ -30,8 +30,8 @@ workflow {
         genecsv = runAIMARRVEL(
             cloneAIMARRVEL.out.aimrepo,
             installAIMARRVELDeps.out.aimdata,
-            params.input_vcf,
-            params.hpostxt,
+            Channel.fromPath(params.input_vcf),
+            Channel.fromPath(params.hpostxt),
             context
         )
     }
