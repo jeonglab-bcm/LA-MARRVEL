@@ -9,6 +9,26 @@
       "description": "CSV exported from AI_MARRVEL containing candidate genes.",
       "format": "file-path"
     },
+    "input_vcf": {
+      "type": "string",
+      "description": "VCF file containing variants for the proband.",
+      "format": "file-path"
+    },
+    "ref_ver": {
+      "type": "string",
+      "defualt": "hg19",
+      "description": "Reference genome version.",
+      "enum": [
+        "hg19",
+        "hg38"
+      ]
+    },
+    "aim_store_dir": {
+      "type": "string",
+      "default": "./aim_store",
+      "description": "Directory where AI-MARRVEL stores its outputs.",
+      "format": "directory-path"
+    },
     "hpostxt": {
       "type": "string",
       "description": "Text file listing proband HPO IDs (one per line).",
@@ -32,8 +52,18 @@
       "default": "run1"
     }
   },
-  "required": [
-    "genecsv",
-    "hpostxt"
+  "oneOf": [
+    {
+      "required": [
+        "genecsv",
+        "hpostxt"
+      ]
+    },
+    {
+      "required": [
+        "input_vcf",
+        "hpostxt"
+      ]
+    }
   ]
-}
+  }
