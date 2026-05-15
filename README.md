@@ -14,7 +14,7 @@ This repository contains a Nextflow pipeline (`workflows/rerank`) that enriches 
 - `--hpostxt`: Text file listing HPO identifiers (one per line) describing the proband.
 - Optional arguments: 
   - `--ref_ver`: Reference version of the VCF file (`hg19`, `hg38`). Default: `hg19`
-  - `--gene_csv`: Gene table output of AI MARRVEL. If provided, the workflow skips AI MARRVEL and only runs the rerank portion.
+  - `--gene_csv`: Gene table output of AI MARRVEL. If provided, the workflow skips AI MARRVEL execution and only runs the rerank portion.
   - `--consideringgenes_g`: Top-N genes per prompt. Default: `100`
   - `--invocationnumber_n`: Number of LLM votes. Default: `10`
   - `--aim_store_dir`: Store location where AI MARRVEL will be installed within the workflow. Default: `./aim_store`
@@ -74,3 +74,18 @@ Example data (`demo.vcf.gz`) was obtained from the publicly accessible AI-MARRVE
 This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
 
 Note: [AI-MARRVEL](https://github.com/LiuzLab/AI_MARRVEL), which is fetched and invoked at runtime, is licensed under GPL-3.0.
+
+### Third-Party Data
+
+The files under `workflows/rerank/resources/` are redistributed snapshots of publicly available biomedical databases:
+
+| File | Source | Version/Download | License |
+|------|--------|--------------|---------|
+| `hp.json` | [Human Phenotype Ontology](https://hpo.jax.org/) | 2025-08-11 | [HPO License](https://hpo.jax.org/license) |
+| `phenotype.hpoa` | [HPO Annotations](https://hpo.jax.org/data/annotations) | 2024-08-13 | [HPO License](https://hpo.jax.org/license) |
+| `disease_to_phenotypes.csv` | [HPO Annotations](https://hpo.jax.org/data/annotations) | 2024-08-13 | [HPO License](https://hpo.jax.org/license) |
+| `hgnc_complete_set.txt` | [HGNC](https://www.genenames.org/) | 2025-09-08 | [CC0](https://www.genenames.org/about/license/) |
+
+This pipeline uses the Human Phenotype Ontology (versions noted above). Find out more at http://www.human-phenotype-ontology.org.
+
+If you are redistributing or using this pipeline commercially, please review the upstream licenses for these resources.
