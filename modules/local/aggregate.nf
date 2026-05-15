@@ -143,9 +143,4 @@ process aggregate {
     reranked_genedf.to_csv("${context.run_id}.improved.reranked.gene.csv")
 
     """
-
-    stub:
-    """
-    cp gene.csv ${context.run_id}.improved.reranked.gene.csv
-    """
 }

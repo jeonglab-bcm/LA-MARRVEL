@@ -43,15 +43,4 @@ process generatePrompt {
     with open("./${context.run_id}.prompt.md", "w") as f:
         f.write(prompt)
     """
-
-    stub:
-    """
-    cat <<EOF > ${context.run_id}.prompt.md
-    # Stub Prompt
-
-    This prompt was generated while running with `-stub-run`.
-    Run ID: ${context.run_id}
-    Considered Genes: ${context.consideringgenes_g}
-    EOF
-    """
 }

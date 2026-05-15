@@ -26,9 +26,4 @@ process runAIMARRVEL {
         --run_id    ${context.run_id}
 
     """
-
-    stub:
-    """
-    printf "gene,score\ngene1,1.0\ngene2,0.9\n" > genes.csv
-    """
 }

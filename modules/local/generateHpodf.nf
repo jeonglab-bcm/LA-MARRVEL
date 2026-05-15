@@ -33,26 +33,4 @@ process generateHpodf {
         hpodf = pd.read_csv(f"input.hpos.txt", header=None, names=["id"]).merge(wholehpodf, on="id", how="left")
         hpodf.to_csv("./${context.run_id}.hpodf.csv", index=False)
     """
-
-    stub:
-    """
-    #!/usr/bin/env python
-    import csv
-    from pathlib import Path
-
-    ids = [line.strip() for line in Path("input.hpos.txt").read_text().splitlines() if line.strip()]
-    if not ids:
-        ids = ["HP:STUB"]
-
-    with open("${context.run_id}.hpodf.csv", "w", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=["id", "name", "synonyms", "definition"])
-        writer.writeheader()
-        for hp_id in ids:
-            writer.writerow({
-                "id": hp_id,
-                "name": f"Stub term for {hp_id}",
-                "synonyms": "[]",
-                "definition": "Stub definition produced with -stub-run"
-            })
-    """
 }

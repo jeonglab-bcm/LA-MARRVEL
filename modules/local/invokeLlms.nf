@@ -34,20 +34,4 @@ process invokeLlms {
         --input "${context.run_id}.output.${iteration}.md" \
         --output "${context.run_id}.prioritized.${iteration}.csv"
     """
-
-    stub:
-    """
-    cat <<EOF > ${context.run_id}.reasoning.${iteration}.md
-    Stub reasoning output for iteration ${iteration}
-    EOF
-
-    cat <<EOF > ${context.run_id}.output.${iteration}.md
-    Stub final output for iteration ${iteration}
-    EOF
-
-    cat <<EOF > ${context.run_id}.prioritized.${iteration}.csv
-    name
-    STUB_GENE_${iteration}
-    EOF
-    """
 }

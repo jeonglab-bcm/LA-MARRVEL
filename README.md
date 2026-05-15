@@ -1,8 +1,5 @@
 # Rerank Workflow
 
-[![Tests](https://github.com/LiuzLab/LA_MARRVEL_RERANK/actions/workflows/pytest.yml/badge.svg)](https://github.com/LiuzLab/LA_MARRVEL_RERANK/actions/workflows/pytest.yml)
-[![Nextflow Stub Run](https://github.com/LiuzLab/LA_MARRVEL_RERANK/actions/workflows/nextflow-stub.yml/badge.svg)](https://github.com/LiuzLab/LA_MARRVEL_RERANK/actions/workflows/nextflow-stub.yml)
-
 This repository contains a Nextflow pipeline (`workflows/rerank`) that enriches candidate genes with phenotype metadata, generates structured LLM prompts, gathers multiple AI-driven prioritizations, and aggregates them into a consensus gene ranking for rare disease analysis.
 
 ## Requirements

@@ -51,26 +51,4 @@ process improveGeneCsv {
 
         genedf.to_csv("${context.run_id}.improved.gene.csv")
     """
-
-    stub:
-    """
-    #!/usr/bin/env python
-    import csv
-
-    with open("gene.csv", newline="") as fh:
-        reader = csv.DictReader(fh)
-        input_fieldnames = reader.fieldnames or []
-        rows = list(reader)
-
-    out_fields = list(dict.fromkeys(input_fieldnames + ["phenoDict", "isTransHeterozygote"]))
-
-    for row in rows:
-        row.setdefault("phenoDict", "{}")
-        row.setdefault("isTransHeterozygote", "No")
-
-    with open("${context.run_id}.improved.gene.csv", "w", newline="") as out:
-        writer = csv.DictWriter(out, fieldnames=out_fields)
-        writer.writeheader()
-        writer.writerows(rows)
-    """
 }
