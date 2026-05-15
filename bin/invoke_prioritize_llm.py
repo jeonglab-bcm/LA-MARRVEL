@@ -24,7 +24,7 @@ class Generank(pydantic.BaseModel):
 
 llm = langchain_aws.ChatBedrockConverse(
     provider="anthropic",
-    model_id="arn:aws:bedrock:us-east-1:769006734761:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+    model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
 )
 
 
