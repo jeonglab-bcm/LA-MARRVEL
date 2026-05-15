@@ -29,8 +29,7 @@ process generateHpodf {
     } for node in data['graphs'][0]['nodes'] if node.get("type") == "CLASS"])
     wholehpodf["id"] = wholehpodf["id"].str.replace("HP_", "HP:")
 
-    if __name__ == "__main__":
-        hpodf = pd.read_csv(f"input.hpos.txt", header=None, names=["id"]).merge(wholehpodf, on="id", how="left")
-        hpodf.to_csv("./${context.run_id}.hpodf.csv", index=False)
+    hpodf = pd.read_csv("${inputhpo}", header=None, names=["id"]).merge(wholehpodf, on="id", how="left")
+    hpodf.to_csv("./${context.run_id}.hpodf.csv", index=False)
     """
 }

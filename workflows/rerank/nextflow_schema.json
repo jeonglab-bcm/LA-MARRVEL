@@ -16,7 +16,7 @@
     },
     "ref_ver": {
       "type": "string",
-      "defualt": "hg19",
+      "default": "hg19",
       "description": "Reference genome version.",
       "enum": [
         "hg19",
