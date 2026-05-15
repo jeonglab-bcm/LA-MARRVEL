@@ -64,3 +64,13 @@ The helper scripts invoke `dotenv.load_dotenv()` before touching Bedrock (`bin/i
       url={https://arxiv.org/abs/2511.02263}, 
 }
 ```
+
+## Example Data
+
+Example data (`demo.vcf.gz`) was obtained from the publicly accessible AI-MARRVEL web platform (ai.marrvel.org). It is included here for demonstration purposes only.
+
+## License
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+
+Note: [AI-MARRVEL](https://github.com/LiuzLab/AI_MARRVEL), which is fetched and invoked at runtime, is licensed under GPL-3.0.
