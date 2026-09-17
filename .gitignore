@@ -1,3 +1,5 @@
+.gsd/
+.bg-shell/
 **/__pycache__/**
 **/.*.swp
 .env
@@ -6,3 +8,4 @@ work/
 stored*/
 published*/
 local-deploy/
+aim_store/

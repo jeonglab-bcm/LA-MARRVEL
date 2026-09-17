@@ -1,8 +1,5 @@
 # Rerank Workflow
 
-[![Tests](https://github.com/LiuzLab/LA_MARRVEL_RERANK/actions/workflows/pytest.yml/badge.svg)](https://github.com/LiuzLab/LA_MARRVEL_RERANK/actions/workflows/pytest.yml)
-[![Nextflow Stub Run](https://github.com/LiuzLab/LA_MARRVEL_RERANK/actions/workflows/nextflow-stub.yml/badge.svg)](https://github.com/LiuzLab/LA_MARRVEL_RERANK/actions/workflows/nextflow-stub.yml)
-
 This repository contains a Nextflow pipeline (`workflows/rerank`) that enriches candidate genes with phenotype metadata, generates structured LLM prompts, gathers multiple AI-driven prioritizations, and aggregates them into a consensus gene ranking for rare disease analysis.
 
 ## Requirements
@@ -168,3 +165,28 @@ Transient failures on either provider (throttling, timeouts, an unreachable serv
       url={https://arxiv.org/abs/2511.02263}, 
 }
 ```
+
+## Example Data
+
+Example data (`demo.vcf.gz`) was obtained from the publicly accessible AI-MARRVEL web platform (ai.marrvel.org). It is included here for demonstration purposes only.
+
+## License
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+
+Note: [AI-MARRVEL](https://github.com/LiuzLab/AI_MARRVEL), which is fetched and invoked at runtime, is licensed under GPL-3.0.
+
+### Third-Party Data
+
+The files under `workflows/rerank/resources/` are redistributed snapshots of publicly available biomedical databases:
+
+| File | Source | Version/Download | License |
+|------|--------|--------------|---------|
+| `hp.json` | [Human Phenotype Ontology](https://hpo.jax.org/) | 2025-08-11 | [HPO License](https://hpo.jax.org/license) |
+| `phenotype.hpoa` | [HPO Annotations](https://hpo.jax.org/data/annotations) | 2024-08-13 | [HPO License](https://hpo.jax.org/license) |
+| `disease_to_phenotypes.csv` | [HPO Annotations](https://hpo.jax.org/data/annotations) | 2024-08-13 | [HPO License](https://hpo.jax.org/license) |
+| `hgnc_complete_set.txt` | [HGNC](https://www.genenames.org/) | 2025-09-08 | [CC0](https://www.genenames.org/about/license/) |
+
+This pipeline uses the Human Phenotype Ontology (versions noted above). Find out more at http://www.human-phenotype-ontology.org.
+
+If you are redistributing or using this pipeline commercially, please review the upstream licenses for these resources.

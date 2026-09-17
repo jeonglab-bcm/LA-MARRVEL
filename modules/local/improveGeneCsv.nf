@@ -18,7 +18,7 @@ process improveGeneCsv {
 
     assert Version(pd.__version__) >= Version("3.0.0") # NOTE(JL): series.to_frame() has been changed, https://github.com/pandas-dev/pandas/pull/58018
 
-    with open("${projectDir}/resources/gene_omim.json") as f:
+    with open("${gene_omim_json}") as f:
         gene_omim = json.loads(f.read())
     hgncdf = pd.read_csv("${projectDir}/resources/hgnc_complete_set.txt", sep="\t", low_memory=False)
     d2pdf = pd.read_csv("${projectDir}/resources/disease_to_phenotypes.csv")

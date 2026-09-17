@@ -4,6 +4,7 @@ include { validateParameters } from 'plugin/nf-schema'
 include { installAIMARRVELDeps } from '../../modules/aim/installAIMARRVELDeps.nf'
 include { cloneAIMARRVEL } from '../../modules/aim/cloneAIMARRVEL.nf'
 include { runAIMARRVEL } from '../../modules/aim/runAIMARRVEL.nf'
+include { storeGeneOmim } from '../../modules/local/storeGeneOmim.nf'
 include { generateHpodf } from '../../modules/local/generateHpodf.nf'
 include { generatePrompt } from '../../modules/local/generatePrompt.nf'
 include { improveGeneCsv } from '../../modules/local/improveGeneCsv.nf'
@@ -71,6 +72,7 @@ workflow {
         "invocationnumber_n": params.invocationnumber_n as Integer,
         "consideringgenes_g": params.consideringgenes_g as Integer,
         "ref_ver": params.ref_ver,
+        "aim_store_dir": params.aim_store_dir,
     ]
 
     if (params.samples_manifest) {
