@@ -3,15 +3,14 @@ process improveGeneCsv {
     tag "$context.run_id"
 
     input:
-    path genecsv, name: "gene.csv"
-    val context
+    tuple val(context), path(genecsv, name: "gene.csv")
 
     output:
-    path "./${context.run_id}.improved.gene.csv"
+    tuple val(context), path("./${context.run_id}.improved.gene.csv")
 
     script:
     """
-    #!/usr/bin/env python
+    #!${moduleDir}/../../.venv/bin/python
     import pandas as pd
     import json
     import ast
@@ -54,7 +53,7 @@ process improveGeneCsv {
 
     stub:
     """
-    #!/usr/bin/env python
+    #!${moduleDir}/../../.venv/bin/python
     import csv
 
     with open("gene.csv", newline="") as fh:

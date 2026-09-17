@@ -1,20 +1,21 @@
 process invokeLlms {
     maxForks 2
     tag "$context.run_id/$iteration"
-    publishDir "published/$context.run_id/llmoutputs", mode: 'copy'
+    publishDir "published${params.publishDirSuffix ?: ''}/$context.run_id/llmoutputs", mode: 'copy'
     // storeDir "stored/llmoutputs"
     errorStrategy { task.exitStatus in 137..150 ? 'retry' : 'terminate' }
     maxRetries 5
 
     input:
     tuple(
+        val(context),
         val(iteration),
         path(prompt_file),
     )
-    val context
 
     output:
     tuple(
+        val(context),
         path("*.reasoning.*.md"),
         path("*.output.*.md"),
         path("*.prioritized.*.csv"),

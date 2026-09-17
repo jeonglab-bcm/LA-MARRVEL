@@ -1,10 +1,10 @@
-#!/usr/bin/env python
-import langchain_aws
+#!/usr/bin/env -S sh -c 'p=${0%/*}/../.venv/bin/python; [ -x "$p" ] || p=python; exec "$p" "$0" "$@"'
 import argparse
 import pydantic
 import typing
 import pandas as pd
 import dotenv
+import llm_provider
 
 dotenv.load_dotenv()
 
@@ -22,10 +22,7 @@ class Generank(pydantic.BaseModel):
     results: typing.List[GenerankItem]
 
 
-llm = langchain_aws.ChatBedrockConverse(
-    provider="anthropic",
-    model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
-)
+llm = llm_provider.prioritize_llm()
 
 
 if __name__ == "__main__":
@@ -41,7 +38,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     with open(args.input) as f:    
         ai_content = f.read()
-    generank = llm.with_structured_output(Generank).with_retry(retry_if_exception_type=(pydantic.ValidationError,llm.client.exceptions.ThrottlingException,)).invoke(ai_content)
+    retry_on = (pydantic.ValidationError,) + llm_provider.retry_exceptions(llm)
+    generank = llm_provider.structured_output(llm, Generank).with_retry(retry_if_exception_type=retry_on).invoke(ai_content)
     main_content = pd.DataFrame(generank.model_dump()['results']).name.to_csv()
     with open(args.output, "w") as f:
         f.write(main_content)

@@ -1,19 +1,17 @@
 process aggregate {
     cpus 1
     tag "$context.run_id"
-    publishDir "published/$context.run_id/reranked_gene", mode: 'copy'
+    publishDir "published${params.publishDirSuffix ?: ''}/$context.run_id/reranked_gene", mode: 'copy'
 
     input:
-    path genecsv, name: "gene.csv"
-    path llmoutputs
-    val context
+    tuple val(context), path(genecsv, name: "gene.csv"), path(llmoutputs)
 
     output:
-    path "./${context.run_id}.improved.reranked.gene.csv"
+    tuple val(context), path("./${context.run_id}.improved.reranked.gene.csv")
 
     script:
     """
-    #!/usr/bin/env python
+    #!${moduleDir}/../../.venv/bin/python
     import pandas as pd
     import numpy as np
 

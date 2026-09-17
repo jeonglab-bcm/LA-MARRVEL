@@ -5,15 +5,14 @@ process generateHpodf {
     tag "$context.run_id"
 
     input:
-    path inputhpo, name: 'input.hpos.txt'
-    val context
+    tuple val(context), path(inputhpo, name: 'input.hpos.txt')
 
     output:
-    path "./${context.run_id}.hpodf.csv"
+    tuple val(context), path("./${context.run_id}.hpodf.csv")
 
     script:
     """
-    #!/usr/bin/env python
+    #!${moduleDir}/../../.venv/bin/python
 
     import pandas as pd
     import json
@@ -36,7 +35,7 @@ process generateHpodf {
 
     stub:
     """
-    #!/usr/bin/env python
+    #!${moduleDir}/../../.venv/bin/python
     import csv
     from pathlib import Path
 
