@@ -7,3 +7,7 @@ python-dotenv
 botocore
 urllib3
 pydantic
+# Tracing. The Langfuse LangChain integration imports the `langchain` package
+# itself, so it is required even though the pipeline only uses langchain-core.
+langfuse
+langchain

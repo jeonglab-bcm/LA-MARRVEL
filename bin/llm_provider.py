@@ -25,7 +25,8 @@ is still accepted as an alias for ``EXTRACTION``.
 
 Both providers are exposed through the same three helpers so the invoke
 scripts stay provider agnostic: :func:`reasoning_llm` /
-:func:`prioritize_llm` build the models, :func:`retry_exceptions` lists the
+:func:`prioritize_llm` build the models, :func:`describe` reports the backend
+and model a built one came from, :func:`retry_exceptions` lists the
 transient failures worth retrying in-process, :func:`retry_exit_code` maps a
 transient failure onto the 137-150 exit codes that make Nextflow retry the
 task, and :func:`split_reasoning` pulls the chain-of-thought and the answer
@@ -296,6 +297,16 @@ def prioritize_llm():
         ),
         extra_body=extra_body,
     )
+
+
+def describe(llm):
+    """``(backend, model)`` for a built chat model, for logs and trace metadata."""
+    model = (
+        getattr(llm, "model_id", None)
+        or getattr(llm, "model_name", None)
+        or getattr(llm, "model", None)
+    )
+    return _provider_of(llm), model
 
 
 def structured_output(llm, schema):

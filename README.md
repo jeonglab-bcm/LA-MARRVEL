@@ -14,6 +14,7 @@ This repository contains a Nextflow pipeline (`workflows/rerank`) that enriches 
   - `openai`: any OpenAI-compatible `/v1` server, such as a `llama.cpp` `llama-server` hosting a Hugging Face model, reachable at `OPENAI_BASE_URL`.
 
   See `.env.example` for the variables each provider expects.
+- Optional: a [Langfuse](https://langfuse.com) project (cloud or self-hosted) to trace the LLM calls; see [Tracing LLM calls with Langfuse](#tracing-llm-calls-with-langfuse).
 
 ## Inputs
 The workflow takes either one sample on the command line, or many samples from a CSV manifest.
@@ -89,7 +90,7 @@ Each stage below runs once per sample, keyed on `run_id`; with a manifest they r
 1. **generateHpodf** – maps supplied HPO IDs onto labels/definitions using `resources/hp.json`.
 1. **improveGeneCsv** – augments the gene table with HGNC/OMIM phenotypes, inheritance metadata, and `isTransHeterozygote` flags via the cached resources in `workflows/rerank/resources`.
 1. **generatePrompt** – builds a markdown prompt that embeds the curated HPO and gene tables (limited to the first `g` genes).
-1. **invokeLlms** – for each prompt iteration, calls `bin/invoke_reasoning_llm.py` to obtain a long-form analysis and `bin/invoke_prioritize_llm.py` to extract an ordered list of genes. Both scripts get their chat model from `bin/llm_provider.py`, which builds a Bedrock or an OpenAI-compatible client for each role independently (settings loaded through `.env`/environment variables).
+1. **invokeLlms** – for each prompt iteration, calls `bin/invoke_reasoning_llm.py` to obtain a long-form analysis and `bin/invoke_prioritize_llm.py` to extract an ordered list of genes, which is cleaned to one gene symbol per row before it is written: entries naming several genes are split, each name is matched against the gene table in that run's own prompt, and repeats keep only their first, best-ranked row — so headings, commentary, and genes the model invented are dropped. Both scripts get their chat model from `bin/llm_provider.py`, which builds a Bedrock or an OpenAI-compatible client for each role independently (settings loaded through `.env`/environment variables). Both calls are traced through `bin/llm_tracing.py` when Langfuse is configured.
 1. **aggregate** – combines every prioritized list with a Tideman ranked-pairs consensus to produce `${run_id}.improved.reranked.gene.csv`.
 
 Intermediate artifacts (prompts, LLM reasoning/output markdown, per-iteration rankings) are copied into `published/<run_id>/`.
@@ -154,6 +155,30 @@ nextflow run workflows/rerank --input_vcf ... --hpostxt ...
 Both SDKs must be installed for a mixed run; `requirements.txt` already lists them. Structured-output binding and retry classification follow the model that is actually in use, so each role keeps its own provider's conventions.
 
 Transient failures on either provider (throttling, timeouts, an unreachable server) exit with codes 137-150, which `modules/local/invokeLlms.nf` retries up to five times.
+
+## Tracing LLM calls with Langfuse
+
+Every reasoning and extraction call can be reported to [Langfuse](https://langfuse.com), which is useful for watching a cohort run, comparing backends, and seeing what the model was actually sent. Tracing is opt-in and off until both keys are set:
+
+```bash
+export LANGFUSE_PUBLIC_KEY="pk-lf-..."
+export LANGFUSE_SECRET_KEY="sk-lf-..."
+export LANGFUSE_HOST="https://cloud.langfuse.com"   # or your self-hosted instance
+
+nextflow run workflows/rerank --samples_manifest manifest/samples_manifest.csv
+```
+
+With either key unset the pipeline behaves exactly as before and reports nothing, so a `.env` without these variables needs no change.
+
+How a run shows up in Langfuse:
+
+- One trace per model call, named `la_marrvel_rerank.reasoning` or `la_marrvel_rerank.extraction`, carrying the prompt, the response, token usage, and latency.
+- The sample's `run_id` is the **session id**, so a sample's `invocationnumber_n` votes and their extraction passes are grouped together.
+- Each trace is tagged with its role and backend (`reasoning`/`extraction`, `bedrock`/`openai`) and records the `iteration` number and model id as metadata — enough to compare vote-to-vote variation, or one provider against the other, from the Langfuse UI.
+
+Other variables (see `.env.example`): `LANGFUSE_TRACING_ENABLED=false` turns tracing off while keeping the keys, `LANGFUSE_TRACING_ENVIRONMENT` and `LANGFUSE_RELEASE` separate cohorts from test runs, and `LANGFUSE_SAMPLE_RATE` traces only a fraction of a large cohort.
+
+Tracing never fails a task: a missing `langfuse` package, bad credentials, or an unreachable server is reported once on stderr (visible in the task's `.command.err`) and the run continues. Because each Nextflow task is its own short-lived process, it flushes its trace before exiting, which costs an unreachable Langfuse server a few seconds per task — `LANGFUSE_TIMEOUT` (default 5 s) caps that wait.
 
 ## Citing LA-MARRVEL
 
