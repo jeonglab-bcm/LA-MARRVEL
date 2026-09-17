@@ -12,9 +12,4 @@ process cloneAIMARRVEL {
     """
     git clone --branch v1.2.0-rc260512 --depth 1 https://github.com/LiuzLab/AI_MARRVEL
     """
-
-    stub:
-    """
-    mkdir -p AI-MARRVEL
-    """
 }

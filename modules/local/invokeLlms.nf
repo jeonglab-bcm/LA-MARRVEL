@@ -40,20 +40,4 @@ process invokeLlms {
         --run_id "${context.run_id}" \
         --iteration "${iteration}"
     """
-
-    stub:
-    """
-    cat <<EOF > ${context.run_id}.reasoning.${iteration}.md
-    Stub reasoning output for iteration ${iteration}
-    EOF
-
-    cat <<EOF > ${context.run_id}.output.${iteration}.md
-    Stub final output for iteration ${iteration}
-    EOF
-
-    cat <<EOF > ${context.run_id}.prioritized.${iteration}.csv
-    name
-    STUB_GENE_${iteration}
-    EOF
-    """
 }
