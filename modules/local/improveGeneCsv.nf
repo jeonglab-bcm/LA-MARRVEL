@@ -4,6 +4,7 @@ process improveGeneCsv {
 
     input:
     tuple val(context), path(genecsv, name: "gene.csv")
+    path gene_omim_json, name: "gene_omim.json"
 
     output:
     tuple val(context), path("./${context.run_id}.improved.gene.csv")

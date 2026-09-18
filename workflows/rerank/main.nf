@@ -108,7 +108,13 @@ workflow {
     }
 
     hpodf = generateHpodf(samples.map { context, gene_csv, hpotxt -> tuple(context, hpotxt) })
-    improvedgenecsv = improveGeneCsv(samples.map { context, gene_csv, hpotxt -> tuple(context, gene_csv) })
+    // Shared by every sample, so .first() turns it into a value channel that
+    // each improveGeneCsv task can consume rather than just the first one.
+    gene_omim = storeGeneOmim(base_context).first()
+    improvedgenecsv = improveGeneCsv(
+        samples.map { context, gene_csv, hpotxt -> tuple(context, gene_csv) },
+        gene_omim
+    )
 
     // run_id is the join key throughout: the two branches above fan out
     // independently, so they have to be re-paired per sample rather than by
