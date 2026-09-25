@@ -68,6 +68,15 @@ workflow {
 
     // Everything except run_id is shared by every sample; run_id is attached
     // per sample below so that each one carries its own output namespace.
+    n_votes = params.invocationnumber_n as Integer
+    // 0 means "a simple majority of N".  A sample whose surviving ballots fall
+    // below this is reported and left un-reranked rather than reranked on the
+    // strength of one or two votes.
+    min_votes = (params.min_votes as Integer) ?: (n_votes.intdiv(2) + 1)
+    if (min_votes > n_votes) {
+        error "min_votes (${min_votes}) cannot exceed invocationnumber_n (${n_votes})"
+    }
+
     base_context = [
         "invocationnumber_n": params.invocationnumber_n as Integer,
         "consideringgenes_g": params.consideringgenes_g as Integer,
@@ -131,11 +140,30 @@ workflow {
         }
 
     // Group the per-iteration votes back into one bundle per sample. Aggregate
-    // only reads the prioritized CSVs, which it looks up by file name, so the
-    // reasoning/output markdown is left published rather than restaged.
+    // reads whichever prioritized CSVs were staged, so the reasoning/output
+    // markdown is left published rather than restaged.
+    //
+    // invokeLlms uses errorStrategy 'ignore', so a sample can arrive with fewer
+    // than N votes: remainder:true lets those short groups through (without it
+    // groupTuple drops them silently and the sample vanishes from the results),
+    // and the filter decides whether what survived is still worth ranking.
     prioritized = invokeLlms(prompt_runs)
         .map { context, reasoning, output, prioritized_csv -> tuple(context.run_id, prioritized_csv) }
-        .groupTuple(size: base_context.invocationnumber_n, sort: true)
+        .groupTuple(size: n_votes, remainder: true, sort: true)
+        .filter { run_id, prioritized_csvs ->
+            def got = prioritized_csvs.size()
+            if (got == n_votes) {
+                return true
+            }
+            if (got >= min_votes) {
+                log.warn "Sample ${run_id}: reranking on ${got}/${n_votes} votes -- ${n_votes - got} invocation(s) failed"
+                return true
+            }
+            // log.warn, not log.error: the run carries on, and log.error is
+            // rendered like a fatal error on the console.
+            log.warn "SKIPPED sample ${run_id}: only ${got}/${n_votes} votes survived, need ${min_votes} -- not reranked"
+            return false
+        }
 
     aggregate(
         improvedgenecsv.map { context, gene_csv -> tuple(context.run_id, context, gene_csv) }

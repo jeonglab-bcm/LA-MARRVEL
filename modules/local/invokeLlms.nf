@@ -1,9 +1,14 @@
 process invokeLlms {
-    // maxForks 2
+    maxForks 4
     tag "$context.run_id/$iteration"
     publishDir "published${params.publishDirSuffix ?: ''}/$context.run_id/llmoutputs", mode: 'copy'
     // storeDir "stored/llmoutputs"
-    errorStrategy { task.exitStatus in 137..150 ? 'retry' : 'terminate' }
+    // A transient failure (137-150, see bin/llm_provider.py) is retried; anything
+    // else costs just this one vote.  'terminate' used to abort the whole run --
+    // one sample's four failed invocations killed 419 pending tasks -- so the
+    // blast radius is now a single ballot: aggregate() ranks whatever votes
+    // arrived and main.nf skips a sample that falls below --min_votes.
+    errorStrategy { task.exitStatus in 137..150 ? 'retry' : 'ignore' }
     maxRetries 5
 
     input:

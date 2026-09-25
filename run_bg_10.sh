@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
 BATCH_REPO="${BATCH_REPO:-../LA_MARRVEL_RERANK_BATCH}"
-MANIFEST="${MANIFEST:-$BATCH_REPO/published/manifest/samples_bg_manifest_mini.csv}"
+MANIFEST="${MANIFEST:-$BATCH_REPO/published/manifest/samples_bg_manifest.csv}"
 INVOCATIONS="${INVOCATIONS:-10}"
 GENES="${GENES:-100}"
 VENV="${VENV:-.venv}"

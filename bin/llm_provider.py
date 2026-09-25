@@ -38,6 +38,7 @@ object itself, so a mixed-provider run stays consistent.
 import json
 import os
 import re
+import sys
 
 BEDROCK = "bedrock"
 OPENAI = "openai"
@@ -68,6 +69,8 @@ EXIT_THROTTLED = 138
 EXIT_TIMEOUT = 139
 EXIT_UNAVAILABLE = 140
 EXIT_CONNECTION = 141
+EXIT_TRUNCATED = 142
+EXIT_CONTEXT = 143
 
 _THINK_TAGS = re.compile(
     r"<(?P<tag>think|thinking|reasoning)>(?P<body>.*?)</(?P=tag)>",
@@ -92,13 +95,18 @@ def provider(role=None):
     ``REASONING_PROVIDER`` / ``EXTRACTION_PROVIDER`` win for their role; both
     fall back to ``PROVIDER`` and finally to ``bedrock``.
     """
+    return _provider_and_source(role)[0]
+
+
+def _provider_and_source(role=None):
+    """``(backend, env name that chose it)``; the name is ``None`` for the default."""
     names = tuple(f"{infix}_PROVIDER" for infix in _ROLE_INFIXES.get(role, ()))
     names += ("PROVIDER",)
     for name in names:
         value = os.environ.get(name)
         if value is not None and value.strip():
-            return _normalize_provider(value, name)
-    return BEDROCK
+            return _normalize_provider(value, name), name
+    return BEDROCK, None
 
 
 def _provider_of(llm):
@@ -309,16 +317,66 @@ def describe(llm):
     return _provider_of(llm), model
 
 
+def settings(llm, role):
+    """Everything that shapes a request from ``llm``, for the task log.
+
+    Read back from the built model rather than the environment, so the record
+    shows what is actually sent -- including defaults, and values a stray or
+    misspelled variable failed to change.  Credentials are never included.
+    """
+    backend, model = describe(llm)
+    chosen_by = _provider_and_source(role)[1]
+    record = {
+        "role": role,
+        "backend": backend,
+        "provider_from": chosen_by or "default (no *PROVIDER variable set)",
+        "model": model,
+    }
+    if backend == BEDROCK:
+        record.update(
+            region=getattr(llm, "region_name", None) or os.environ.get("AWS_DEFAULT_REGION"),
+            temperature=llm.temperature,
+            top_p=llm.top_p,
+            max_tokens=llm.max_tokens,
+            additional_model_request_fields=llm.additional_model_request_fields,
+        )
+    else:
+        record.update(
+            base_url=llm.openai_api_base,
+            temperature=llm.temperature,
+            top_p=llm.top_p,
+            max_tokens=llm.max_tokens,
+            timeout=llm.request_timeout,
+            extra_body=llm.extra_body,
+            model_kwargs=llm.model_kwargs or None,
+        )
+        if role == EXTRACTION:
+            record["structured_output_method"] = _structured_output_method()
+    # The pre-multi-provider spelling; setting it silently falls back to bedrock.
+    if os.environ.get("LLM_PROVIDER", "").strip():
+        record["warning"] = "LLM_PROVIDER is set but ignored; use PROVIDER / *_PROVIDER"
+    return record
+
+
+def log_settings(llm, role, file=None):
+    """Write :func:`settings` to stderr as one greppable ``[llm-settings]`` JSON line."""
+    line = json.dumps(settings(llm, role), sort_keys=False, default=str)
+    print(f"[llm-settings] {line}", file=file or sys.stderr, flush=True)
+
+
+def _structured_output_method():
+    return _env(
+        *_names("OPENAI", "STRUCTURED_OUTPUT_METHOD", EXTRACTION), default="json_schema"
+    )
+
+
 def structured_output(llm, schema):
     """Bind ``schema`` to ``llm`` using the method each provider handles best."""
     if _provider_of(llm) == BEDROCK:
         return llm.with_structured_output(schema)
     # llama.cpp turns a json_schema response_format into a sampling grammar,
     # which is far more reliable than tool calling on arbitrary HF models.
-    method = _env(
-        *_names("OPENAI", "STRUCTURED_OUTPUT_METHOD", EXTRACTION), default="json_schema"
-    )
-    return llm.with_structured_output(schema, method=method)
+    return llm.with_structured_output(schema, method=_structured_output_method())
 
 
 def retry_exceptions(llm):
@@ -333,6 +391,11 @@ def retry_exceptions(llm):
         openai.APITimeoutError,
         openai.APIConnectionError,
         openai.InternalServerError,
+        # Raised when the server stopped at max_tokens and the structured
+        # response is therefore unparseable.  Worth retrying because the run
+        # away decode is not reproducible: the server batches concurrent
+        # requests, so the same input can take a different token path.
+        openai.LengthFinishReasonError,
     )
 
 
@@ -383,9 +446,31 @@ def _bedrock_exit_code(exc):
     return None
 
 
+def _is_openai_context_overflow(exc):
+    """True for a slot running out of KV cache part-way through a stream.
+
+    llama-server reports this as an SSE error event, which the client surfaces
+    as a bare ``APIError`` carrying the server's message -- there is no status
+    code and no dedicated class, so it has to be matched on the text.  It is
+    worth retrying because the cache is shared between the server's slots: the
+    same prompt succeeds when fewer invocations are in flight.  An
+    ``APIStatusError`` (the 400 ``exceed_context_size_error`` raised before
+    generation starts) means the prompt alone does not fit and is deliberately
+    excluded -- retrying cannot make it smaller.
+    """
+    import openai
+
+    if not isinstance(exc, openai.APIError) or isinstance(exc, openai.APIStatusError):
+        return False
+    return "context size has been exceeded" in str(exc).lower()
+
+
 def _openai_exit_code(exc):
     import openai
 
+    # Not an APIStatusError, so it has to be matched before the status checks.
+    if isinstance(exc, openai.LengthFinishReasonError):
+        return EXIT_TRUNCATED
     if isinstance(exc, openai.RateLimitError):
         return EXIT_THROTTLED
     if isinstance(exc, openai.APITimeoutError):
@@ -396,6 +481,9 @@ def _openai_exit_code(exc):
         return EXIT_UNAVAILABLE
     if isinstance(exc, openai.APIStatusError) and exc.status_code >= 500:
         return EXIT_UNAVAILABLE
+    # Matched on the message, so it goes last: every typed check above wins.
+    if _is_openai_context_overflow(exc):
+        return EXIT_CONTEXT
     return None
 
 

@@ -2,6 +2,7 @@
 import argparse
 import io
 import re
+import sys
 import pydantic
 import typing
 import pandas as pd
@@ -18,11 +19,32 @@ class GenerankItem(pydantic.BaseModel):
     rank: int
 
 
-class Generank(pydantic.BaseModel):
+# Ceiling on `results` when the extraction runs by hand without --prompt and
+# the candidate list is therefore unknown.
+DEFAULT_MAX_RESULTS = 500
+
+
+def generank_model(max_results):
+    """``Generank`` whose ``results`` array is capped at ``max_results`` items.
+
+    An unbounded array lets a grammar-constrained decode keep appending entries
+    until it hits max_tokens, which the OpenAI client reports as
+    ``LengthFinishReasonError`` rather than a usable answer.  pydantic's
+    ``max_length`` becomes ``maxItems`` in the JSON schema, which llama.cpp
+    turns into a bounded repetition in the sampling grammar so the model has to
+    close the array.  (Real OpenAI rejects ``maxItems`` under ``strict``; this
+    bound assumes an extraction endpoint that builds a grammar from the schema.)
     """
-    Extract prioritized gene ranks only.
-    """
-    results: typing.List[GenerankItem]
+
+    class Generank(pydantic.BaseModel):
+        """
+        Extract prioritized gene ranks only.
+        """
+        results: typing.Annotated[
+            typing.List[GenerankItem], pydantic.Field(max_length=max_results)
+        ]
+
+    return Generank
 
 
 # The extraction model is asked for gene symbols but sometimes answers with a
@@ -134,10 +156,15 @@ if __name__ == "__main__":
         ai_content = f.read()
 
     candidates = None
+    # No answer can name more genes than were shown to the reasoning model, so
+    # the candidate list doubles as the bound on the extracted array.
+    max_results = DEFAULT_MAX_RESULTS
     if args.prompt:
         with open(args.prompt) as f:
             candidates = candidate_index(candidate_genes(f.read()))
+        max_results = max(len(candidates), 1)
     retry_on = (pydantic.ValidationError,) + llm_provider.retry_exceptions(llm)
+    llm_provider.log_settings(llm, llm_provider.EXTRACTION)
     backend, model = llm_provider.describe(llm)
     with llm_tracing.trace(
         llm_provider.EXTRACTION,
@@ -149,7 +176,18 @@ if __name__ == "__main__":
     ) as config:
         # The in-process retries land on the same trace, so a retried extraction
         # shows up as several generations under one observation.
-        generank = llm_provider.structured_output(llm, Generank).with_retry(retry_if_exception_type=retry_on).invoke(ai_content, config=config)
+        try:
+            generank = llm_provider.structured_output(llm, generank_model(max_results)).with_retry(retry_if_exception_type=retry_on).invoke(ai_content, config=config)
+        except Exception as e:
+            # Same contract as invoke_reasoning_llm.py: a transient failure that
+            # outlived the in-process retries exits in 137-150 so invokeLlms.nf
+            # reruns the task -- which resamples the reasoning step too, giving
+            # the extraction a different input to work from.
+            exit_code = llm_provider.retry_exit_code(e, llm)
+            if exit_code is None:
+                raise
+            print(e, file=sys.stderr)
+            sys.exit(exit_code)
     main_content = clean_gene_names(pd.DataFrame(generank.model_dump()['results']).name, candidates).to_csv()
     
     with open(args.output, "w") as f:

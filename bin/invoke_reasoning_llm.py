@@ -37,6 +37,7 @@ if __name__ == "__main__":
     with open(args.input) as f:
         prompt = f.read().strip()
 
+    llm_provider.log_settings(thinking_llm, llm_provider.REASONING)
     backend, model = llm_provider.describe(thinking_llm)
     with llm_tracing.trace(
         llm_provider.REASONING,
