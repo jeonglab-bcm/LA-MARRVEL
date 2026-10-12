@@ -9,3 +9,5 @@ stored*/
 published*/
 local-deploy/
 aim_store/
+run_*10*.sh
+tests/
