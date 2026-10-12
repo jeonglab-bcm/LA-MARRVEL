@@ -93,7 +93,7 @@ process aggregate {
     def vote_paths():
         '''The prioritized CSVs that were actually staged, in iteration order.
 
-        invokeLlms runs with errorStrategy 'ignore', so a vote it could not
+        reasonLlm/extractLlm run with errorStrategy 'ignore', so a vote it could not
         produce is simply absent and the surviving iteration numbers can have
         gaps in them -- reading 0..N-1 blindly would raise on the first gap.
         main.nf has already refused any sample with too few of them.

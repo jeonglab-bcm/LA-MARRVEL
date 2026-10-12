@@ -63,7 +63,7 @@ DEFAULT_OPENAI_MODEL = "local-model"
 DEFAULT_OPENAI_MAX_TOKENS = 65536
 DEFAULT_OPENAI_TIMEOUT = 3600.0
 
-# Exit codes in 137..150 are retried by modules/local/invokeLlms.nf.
+# Exit codes in 137..150 are retried by reasonLlm/extractLlm in modules/local/invokeLlms.nf.
 EXIT_STREAM_ERROR = 137
 EXIT_THROTTLED = 138
 EXIT_TIMEOUT = 139

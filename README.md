@@ -75,7 +75,7 @@ nextflow run workflows/generate_manifest \
 
 A sample that matches only one of the two patterns is reported as a warning and left out of the manifest, so check the run's output before using it. The manifest is a plain CSV: edit it by hand to run a subset, or keep several alongside each other (one per cohort) and select with `--samples_manifest`.
 
-Cohort runs are worth a look at `maxForks` in `modules/local/invokeLlms.nf`, which caps concurrent LLM calls at 2 across the whole run.
+Cohort runs are worth a look at `maxForks` in `modules/local/invokeLlms.nf`, which caps concurrent reasoning and extraction calls at 4 each across the whole run.
 
 ## Pipeline stages
 1. **AI MARRVEL PORTION** (these parts are skipped if gene table `gene_csv` is supplied)
@@ -87,7 +87,9 @@ Each stage below runs once per sample, keyed on `run_id`; with a manifest they r
 1. **generateHpodf** – maps supplied HPO IDs onto labels/definitions using `resources/hp.json`.
 1. **improveGeneCsv** – augments the gene table with HGNC/OMIM phenotypes, inheritance metadata, and `isTransHeterozygote` flags via the cached resources in `workflows/rerank/resources`.
 1. **generatePrompt** – builds a markdown prompt that embeds the curated HPO and gene tables (limited to the first `g` genes).
-1. **invokeLlms** – for each prompt iteration, calls `bin/invoke_reasoning_llm.py` to obtain a long-form analysis and `bin/invoke_prioritize_llm.py` to extract an ordered list of genes, which is cleaned to one gene symbol per row before it is written: entries naming several genes are split, each name is matched against the gene table in that run's own prompt, and repeats keep only their first, best-ranked row — so headings, commentary, and genes the model invented are dropped. Both scripts get their chat model from `bin/llm_provider.py`, which builds a Bedrock or an OpenAI-compatible client for each role independently (settings loaded through `.env`/environment variables). Both calls are traced through `bin/llm_tracing.py` when Langfuse is configured.
+1. **reasonLlm** – for each prompt iteration, calls `bin/invoke_reasoning_llm.py` to obtain a long-form analysis. With `--reason_before_extract` (the default) every reasoning call finishes before the first extraction starts, which saves model swaps when both models are served from one llama-swap host; `--reason_before_extract false` lets each vote go on to extraction as soon as its reasoning is done.
+1. **extractLlm** – calls `bin/invoke_prioritize_llm.py` on each reasoning output to extract an ordered list of genes, which is cleaned to one gene symbol per row before it is written: entries naming several genes are split, each name is matched against the gene table in that run's own prompt, and repeats keep only their first, best-ranked row — so headings, commentary, and genes the model invented are dropped. Both scripts get their chat model from `bin/llm_provider.py`, which builds a Bedrock or an OpenAI-compatible client for each role independently (settings loaded through `.env`/environment variables). Both calls are traced through `bin/llm_tracing.py` when Langfuse is configured.
+1. **invokeLlms** – with `RUN_STRATEGY=unified` (the default), reasonLlm and extractLlm above run as this one task per vote instead, so a retry resamples the reasoning as well as the extraction. `RUN_STRATEGY=stratified` runs them as the two separate steps. Set it in the environment or in `.env` (environment wins); `--reason_before_extract` only applies to `stratified`.
 1. **aggregate** – combines every prioritized list with a Tideman ranked-pairs consensus to produce `${run_id}.improved.reranked.gene.csv`.
 
 Intermediate artifacts (prompts, LLM reasoning/output markdown, per-iteration rankings) are copied into `published/<run_id>/`.

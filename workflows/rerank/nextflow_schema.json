@@ -57,6 +57,16 @@
       "default": 0,
       "minimum": 0
     },
+    "reason_before_extract": {
+      "type": "boolean",
+      "description": "Finish every reasoning call before the first extraction starts. Saves model swaps when both models share one llama-swap server, at the cost of no sample being aggregated until all reasoning is done.",
+      "default": true
+    },
+    "reuse_published_votes": {
+      "type": "boolean",
+      "description": "Copy a reasoning vote already published under this publishDirSuffix instead of calling the LLM again. Use it to finish an aborted run: reasonLlm is never cached, so -resume alone repeats every call.",
+      "default": false
+    },
     "run_id": {
       "type": "string",
       "description": "Namespace for workflow outputs. Ignored when --samples_manifest is used, which takes run_id from the manifest.",

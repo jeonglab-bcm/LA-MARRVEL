@@ -8,7 +8,7 @@ include { storeGeneOmim } from '../../modules/local/storeGeneOmim.nf'
 include { generateHpodf } from '../../modules/local/generateHpodf.nf'
 include { generatePrompt } from '../../modules/local/generatePrompt.nf'
 include { improveGeneCsv } from '../../modules/local/improveGeneCsv.nf'
-include { invokeLlms } from '../../modules/local/invokeLlms.nf'
+include { invokeLlms; reasonLlm; extractLlm } from '../../modules/local/invokeLlms.nf'
 include { aggregate } from '../../modules/local/aggregate.nf'
 
 // Resolve one manifest cell into a file, relative paths being taken relative to
@@ -57,6 +57,26 @@ def samplesFromManifest(base_context) {
             )
         }
     )
+}
+
+// RUN_STRATEGY picks how the two LLM steps of a vote are run (see
+// modules/local/invokeLlms.nf): 'unified' (default) or 'stratified'.  It is read
+// like the invoke scripts read their settings -- the environment first, then
+// the .env at the repository root.
+def runStrategy() {
+    def value = System.getenv('RUN_STRATEGY')
+    def dotenv = file("${projectDir}/../../.env")
+    if (value == null && dotenv.exists()) {
+        def line = dotenv.readLines().find { it ==~ /^\s*(export\s+)?RUN_STRATEGY\s*=.*/ }
+        if (line) {
+            value = line.split('=', 2)[1].replaceAll(/\s+#.*$/, '').trim().replaceAll(/^["']|["']$/, '')
+        }
+    }
+    def strategy = value ?: 'unified'
+    if (!(strategy in ['unified', 'stratified'])) {
+        error "RUN_STRATEGY must be 'unified' or 'stratified', got '${strategy}'"
+    }
+    return strategy
 }
 
 workflow {
@@ -139,16 +159,43 @@ workflow {
             (0..<context.invocationnumber_n).collect { i -> tuple(context, i, prompt_file) }
         }
 
+    run_strategy = runStrategy()
+    log.info "LLM run strategy: ${run_strategy}"
+    if (run_strategy == 'unified') {
+        votes = invokeLlms(prompt_runs)
+            .map { context, reasoning, output, prioritized_csv, extracted_csv -> tuple(context.run_id, prioritized_csv) }
+    }
+    else {
+        reasoned = reasonLlm(prompt_runs)
+            .map { context, iteration, reasoning, output -> tuple(context.run_id, context, iteration, output) }
+        if (params.reason_before_extract) {
+            // Barrier: toList() emits once, after the last reasoning task (retries
+            // included) has finished, so extraction never shares the server with
+            // reasoning and llama-swap swaps models once rather than per task.  An
+            // empty list, when every reasoning call failed, emits nothing.
+            reasoned = reasoned.toList().flatMap { it }
+        }
+
+        // The prompt is joined back on by run_id rather than carried through
+        // reasonLlm: extraction needs its gene table as the candidate list.
+        extraction_runs = reasoned
+            .combine(prompts.map { context, prompt_file -> tuple(context.run_id, prompt_file) }, by: 0)
+            .map { run_id, context, iteration, output, prompt_file -> tuple(context, iteration, output, prompt_file) }
+
+        votes = extractLlm(extraction_runs)
+            .map { context, prioritized_csv, extracted_csv -> tuple(context.run_id, prioritized_csv) }
+    }
+
     // Group the per-iteration votes back into one bundle per sample. Aggregate
     // reads whichever prioritized CSVs were staged, so the reasoning/output
     // markdown is left published rather than restaged.
     //
-    // invokeLlms uses errorStrategy 'ignore', so a sample can arrive with fewer
-    // than N votes: remainder:true lets those short groups through (without it
-    // groupTuple drops them silently and the sample vanishes from the results),
-    // and the filter decides whether what survived is still worth ranking.
-    prioritized = invokeLlms(prompt_runs)
-        .map { context, reasoning, output, prioritized_csv -> tuple(context.run_id, prioritized_csv) }
+    // The LLM processes use errorStrategy 'ignore', so a sample can
+    // arrive with fewer than N votes: remainder:true lets those short groups
+    // through (without it groupTuple drops them silently and the sample vanishes
+    // from the results), and the filter decides whether what survived is still
+    // worth ranking.
+    prioritized = votes
         .groupTuple(size: n_votes, remainder: true, sort: true)
         .filter { run_id, prioritized_csvs ->
             def got = prioritized_csvs.size()
