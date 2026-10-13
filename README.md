@@ -5,7 +5,7 @@ This repository contains a Nextflow pipeline (`workflows/la_marrvel`) that enric
 ## Requirements
 - Nextflow 23.10+ and a Python 3.11 runtime available on worker nodes.
 - Python dependencies listed in `requirements.txt` (install with `pip install -r requirements.txt` inside your virtual environment).
-- Singularity 4.2.0+
+- Singularity 4.2.0+, or [pixi](https://pixi.sh) to run AI MARRVEL without containers (`--aim_native`).
 - An LLM backend for each of the two model roles — `reasoning` (long-form analysis) and `extraction` (structured gene-rank extraction). `PROVIDER` sets both; `REASONING_PROVIDER` and `EXTRACTION_PROVIDER` override it per role, so the two steps can run on different backends.
   - `bedrock` (default): AWS CLI 2 and AWS Bedrock access to the Claude Sonnet 4 reasoning model, configured via standard AWS credentials or a `.env` file.
   - `openai`: any OpenAI-compatible `/v1` server, such as a `llama.cpp` `llama-server` hosting a Hugging Face model, reachable at `OPENAI_BASE_URL`.
@@ -29,6 +29,12 @@ Optional arguments:
 - `--consideringgenes_g`: Top-N genes per prompt. Default: `100`
 - `--invocationnumber_n`: Number of LLM votes. Default: `10`
 - `--aim_store_dir`: Store location where AI MARRVEL will be installed within the workflow. Default: `./aim_store`
+- `--aim_repo`: Git repository AI MARRVEL is cloned from. Default: `https://github.com/LiuzLab/AI_MARRVEL`
+- `--aim_version`: Tag, branch or commit SHA of `--aim_repo` to run. Default: `v1.2.0-rc260512`
+- `--aim_native`: Run AI MARRVEL in its pixi environments instead of Singularity, for hosts without a container engine (macOS). Needs a release that ships `native/native.config`, such as [hyunhwan-bcm/AI_MARRVEL](https://github.com/hyunhwan-bcm/AI_MARRVEL). Default: `false`
+- `--aim_repo_dir`: Existing AI MARRVEL checkout to run instead of cloning `--aim_repo`.
+- `--aim_ref_dir`: Existing AI MARRVEL reference data directory to use instead of syncing it from S3.
+- `--aim_args`: Extra arguments appended to the AI MARRVEL `nextflow run` command, e.g. the fork's `--rust true --aim_bin ... --rust_refs ... --rust_models ... --vep_store ...`.
 - `--run_id`: Namespace for outputs. Single-sample mode only. Default: `run1`
 - `--publishDirSuffix`: Extra level under `published/`, e.g. `/udn_100` publishes to `published/udn_100/<run_id>/`. Must start with `/`. Use it to keep cohorts or parameter sweeps from overwriting each other when the same `run_id` appears in more than one run.
 - `--min_votes`: Fewest surviving LLM votes a sample needs to be reranked; a sample with fewer is reported and left un-reranked. `0` means a simple majority of `--invocationnumber_n`. Default: `0`
@@ -103,9 +109,9 @@ Votes already published are copied; only the missing ones call the model. To red
 
 ## Pipeline stages
 1. **AI MARRVEL PORTION** (these parts are skipped if gene table `gene_csv` is supplied)
-    1. **installAIMARRVELDeps** - downloads AI MARRVEL dependency files (reference genomes, etc) from aws S3 bucket. Stores in `aim_store_dir` and doesn't rerun automatically.
-    1. **cloneAIMARRVEL** - clones AI MARRVEL git repository from github at version `v1.2.0-rc260512`. Stores in `aim_store_dir` and doesn't rerun automatically.
-    1. **runAIMARRVEL** - runs the AI MARRVEL workflow within `aim_store_dir` using Singularity profile and generates a gene table.
+    1. **installAIMARRVELDeps** - downloads AI MARRVEL dependency files (reference genomes, etc) from aws S3 bucket. Stores in `aim_store_dir` and doesn't rerun automatically. Skipped with `--aim_ref_dir`.
+    1. **cloneAIMARRVEL** - clones `--aim_repo` at `--aim_version` (default LiuzLab `v1.2.0-rc260512`), and with `--aim_native` installs its pixi environments. Stores in `aim_store_dir` and doesn't rerun automatically, so use a fresh `aim_store_dir` when changing version. Skipped with `--aim_repo_dir`.
+    1. **runAIMARRVEL** - runs the AI MARRVEL workflow using the Singularity profile (or natively with `--aim_native`) and produces the gene table. Releases that stop at the transcript-level `<run_id>.expanded.csv.gz` (v1.1.x and the hyunhwan-bcm fork) have it collapsed into the gene table by `bin/aim_gene_table.py`, which matches what v1.2 writes itself.
 Each stage below runs once per sample, keyed on `run_id`; with a manifest they run concurrently.
 
 1. **generateHpodf** – maps supplied HPO IDs onto labels/definitions using `resources/hp.json`.

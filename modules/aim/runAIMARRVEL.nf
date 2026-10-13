@@ -17,9 +17,16 @@ process runAIMARRVEL {
     def aim_profile = params.aim_native
         ? "-c \${FULL_AIM_REPO}/native/native.config run \${FULL_AIM_REPO}/main.nf -profile debug"
         : "run \${FULL_AIM_REPO} -profile singularity --skip_ref_sync"
+    // Native mode runs every AIM process in the checkout's pixi environments
+    // (native/README.md in the AIM repo). Conda prefixes are not relocatable,
+    // so they are installed here, in the checkout's final location, rather than
+    // in cloneAIMARRVEL, whose storeDir moves the checkout. Each step is a no-op
+    // once done.
+    def setup_native = "(cd \${FULL_AIM_REPO} && pixi install --all && pixi run -e vep fetch-vep && pixi run -e r install-ontologysimilarity)"
     """
     export NXF_SINGULARITY_CACHEDIR=$moduleDir/../../work/singularity
     FULL_AIM_REPO=\$(readlink -f ${aim_repo})
+    ${params.aim_native ? setup_native : ''}
     nextflow ${aim_profile} \
         --ref_dir   `readlink -f ${aimdata}` \
         --ref_ver   ${context.ref_ver} \
@@ -27,7 +34,7 @@ process runAIMARRVEL {
         --input_hpo `readlink -f ${hpostxt}` \
         --outdir    ./aim_output \
         --storedir  ${aim_store_dir} \
-        --run_id    ${context.run_id}
+        --run_id    ${context.run_id} ${params.aim_args ?: ''}
 
     # AIM v1.2 writes the gene table itself; earlier releases (v1.1.x and the
     # hyunhwan-bcm fork) stop at the transcript-level matrix, so collapse it here.

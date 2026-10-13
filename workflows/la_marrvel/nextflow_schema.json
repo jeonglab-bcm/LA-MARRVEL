@@ -51,13 +51,18 @@
     },
     "aim_repo_dir": {
       "type": "string",
-      "description": "Existing AI-MARRVEL checkout to run instead of cloning aim_repo. With aim_native, its pixi environments must already be installed.",
+      "description": "Existing AI-MARRVEL checkout to run instead of cloning aim_repo.",
       "format": "directory-path"
     },
     "aim_ref_dir": {
       "type": "string",
       "description": "Existing AI-MARRVEL reference data directory to use instead of syncing it from S3 into aim_store_dir.",
       "format": "directory-path"
+    },
+    "aim_args": {
+      "type": "string",
+      "default": "",
+      "description": "Extra arguments appended to the AI-MARRVEL nextflow command, e.g. '--rust true --aim_bin /path/to/aim ...' for the hyunhwan-bcm fork."
     },
     "hpostxt": {
       "type": "string",

@@ -17,11 +17,5 @@ process cloneAIMARRVEL {
     git remote add origin ${params.aim_repo}
     git fetch -q --depth 1 origin ${params.aim_version}
     git checkout -q FETCH_HEAD
-    """ + (params.aim_native ? """
-    # Native mode runs every AIM process in the checkout's pixi environments
-    # (native/README.md in the AIM repo), so they are set up once, here.
-    pixi install --all
-    pixi run -e vep fetch-vep
-    pixi run -e r install-ontologysimilarity
-    """ : "")
+    """
 }
