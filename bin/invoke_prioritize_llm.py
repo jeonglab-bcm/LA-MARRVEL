@@ -1,4 +1,5 @@
-#!/usr/bin/env -S sh -c 'p=${0%/*}/../.venv/bin/python; [ -x "$p" ] || p=python; exec "$p" "$0" "$@"'
+#!/bin/sh
+"exec" "sh" "-c" 'p="${0%/*}/../.venv/bin/python"; [ -x "$p" ] || p=python; exec "$p" "$0" "$@"' "$0" "$@"
 import argparse
 import io
 import re
