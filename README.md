@@ -29,8 +29,13 @@ Optional arguments:
 - `--consideringgenes_g`: Top-N genes per prompt. Default: `100`
 - `--invocationnumber_n`: Number of LLM votes. Default: `10`
 - `--aim_store_dir`: Store location where AI MARRVEL will be installed within the workflow. Default: `./aim_store`
-- `--run_id`: Namespace for outputs. Single-sample mode only.
+- `--run_id`: Namespace for outputs. Single-sample mode only. Default: `run1`
 - `--publishDirSuffix`: Extra level under `published/`, e.g. `/udn_100` publishes to `published/udn_100/<run_id>/`. Must start with `/`. Use it to keep cohorts or parameter sweeps from overwriting each other when the same `run_id` appears in more than one run.
+- `--min_votes`: Fewest surviving LLM votes a sample needs to be reranked; a sample with fewer is reported and left un-reranked. `0` means a simple majority of `--invocationnumber_n`. Default: `0`
+- `--reason_before_extract`: With `RUN_STRATEGY=stratified`, finish every reasoning call before the first extraction starts (see [Pipeline stages](#pipeline-stages)). Ignored by `unified`. Default: `true`
+- `--reuse_published_votes`: Copy LLM outputs already published under this `--publishDirSuffix` instead of calling the model again — a vote's reasoning when its `*.output.*.md` is non-empty, its extraction when its `*.prioritized.*.csv` is non-empty. See [Resuming an interrupted run](#resuming-an-interrupted-run). Default: `false`
+
+How the LLM steps run is set by the `RUN_STRATEGY` environment variable rather than a parameter; see [Environment variables](#environment-variables).
 
 ## Running
 The following command is an example run using included vcf and hpo term files.
@@ -75,7 +80,26 @@ nextflow run workflows/generate_manifest \
 
 A sample that matches only one of the two patterns is reported as a warning and left out of the manifest, so check the run's output before using it. The manifest is a plain CSV: edit it by hand to run a subset, or keep several alongside each other (one per cohort) and select with `--samples_manifest`.
 
-Cohort runs are worth a look at `maxForks` in `modules/local/invokeLlms.nf`, which caps concurrent LLM calls at 2 across the whole run.
+`generate_manifest` parameters:
+- `--genecsvGlob` (required): Glob matching every sample's gene table.
+- `--hpotxtGlob` (required): Glob matching every sample's HPO list.
+- `--run_id_regex`: Regex matched against each file name; its first capture group is the `run_id`. Unset, the `run_id` is the name of the file's parent directory.
+- `--outfile`: Where to write the manifest. Default: `manifest/samples_manifest.csv`
+
+Cohort runs are worth a look at `maxForks` in `modules/local/invokeLlms.nf`, which caps concurrent LLM tasks at 4 per process across the whole run.
+
+### Resuming an interrupted run
+
+`-resume` reuses the cached non-LLM stages, but the LLM processes (`invokeLlms`, `reasonLlm`, `extractLlm`) are never cached (`workflows/rerank/nextflow.config`), because each call is a fresh sample. To pick an interrupted run up without repeating finished LLM calls, rerun it with the same `--publishDirSuffix` and `--reuse_published_votes true`:
+
+```bash
+nextflow run workflows/rerank -resume \
+    --samples_manifest manifest/samples_manifest.csv \
+    --publishDirSuffix /cohort_g100 \
+    --reuse_published_votes true
+```
+
+Votes already published are copied; only the missing ones call the model. To redo a specific vote, move both its `*.output.<i>.md` and its `*.prioritized.<i>.csv` out of `published/` before rerunning — with only the first moved, the new reasoning would be paired with the old extraction.
 
 ## Pipeline stages
 1. **AI MARRVEL PORTION** (these parts are skipped if gene table `gene_csv` is supplied)
@@ -87,7 +111,9 @@ Each stage below runs once per sample, keyed on `run_id`; with a manifest they r
 1. **generateHpodf** – maps supplied HPO IDs onto labels/definitions using `resources/hp.json`.
 1. **improveGeneCsv** – augments the gene table with HGNC/OMIM phenotypes, inheritance metadata, and `isTransHeterozygote` flags via the cached resources in `workflows/rerank/resources`.
 1. **generatePrompt** – builds a markdown prompt that embeds the curated HPO and gene tables (limited to the first `g` genes).
-1. **invokeLlms** – for each prompt iteration, calls `bin/invoke_reasoning_llm.py` to obtain a long-form analysis and `bin/invoke_prioritize_llm.py` to extract an ordered list of genes, which is cleaned to one gene symbol per row before it is written: entries naming several genes are split, each name is matched against the gene table in that run's own prompt, and repeats keep only their first, best-ranked row — so headings, commentary, and genes the model invented are dropped. Both scripts get their chat model from `bin/llm_provider.py`, which builds a Bedrock or an OpenAI-compatible client for each role independently (settings loaded through `.env`/environment variables). Both calls are traced through `bin/llm_tracing.py` when Langfuse is configured.
+1. **reasonLlm** – for each prompt iteration, calls `bin/invoke_reasoning_llm.py` to obtain a long-form analysis. With `--reason_before_extract` (the default) every reasoning call finishes before the first extraction starts, which saves model swaps when both models are served from one llama-swap host; `--reason_before_extract false` lets each vote go on to extraction as soon as its reasoning is done.
+1. **extractLlm** – calls `bin/invoke_prioritize_llm.py` on each reasoning output to extract an ordered list of genes, which is cleaned to one gene symbol per row before it is written: entries naming several genes are split, each name is matched against the gene table in that run's own prompt, and repeats keep only their first, best-ranked row — so headings, commentary, and genes the model invented are dropped. Both scripts get their chat model from `bin/llm_provider.py`, which builds a Bedrock or an OpenAI-compatible client for each role independently (settings loaded through `.env`/environment variables). Both calls are traced through `bin/llm_tracing.py` when Langfuse is configured.
+1. **invokeLlms** – with `RUN_STRATEGY=unified` (the default), reasonLlm and extractLlm above run as this one task per vote instead, so a retry resamples the reasoning as well as the extraction. `RUN_STRATEGY=stratified` runs them as the two separate steps. Set it in the environment or in `.env` (environment wins); `--reason_before_extract` only applies to `stratified`.
 1. **aggregate** – combines every prioritized list with a Tideman ranked-pairs consensus to produce `${run_id}.improved.reranked.gene.csv`.
 
 Intermediate artifacts (prompts, LLM reasoning/output markdown, per-iteration rankings) are copied into `published/<run_id>/`.
@@ -151,7 +177,38 @@ nextflow run workflows/rerank --input_vcf ... --hpostxt ...
 
 Both SDKs must be installed for a mixed run; `requirements.txt` already lists them. Structured-output binding and retry classification follow the model that is actually in use, so each role keeps its own provider's conventions.
 
-Transient failures on either provider (throttling, timeouts, an unreachable server) exit with codes 137-150, which `modules/local/invokeLlms.nf` retries up to five times.
+Transient failures on either provider (throttling, timeouts, an unreachable server, a response cut off at `max_tokens`) exit with codes 137-150, which `modules/local/invokeLlms.nf` retries up to five times; a vote that still fails is dropped and the sample is ranked on the votes that remain (see `--min_votes`).
+
+## Environment variables
+
+Read from the shell environment or from `.env` at the repository root; a real environment variable wins. `.env.example` lists them with examples. Every `OPENAI_*`/`BEDROCK_*` setting below can be scoped to one role by inserting `REASONING` or `EXTRACTION` (alias `PRIORITIZE`) after the prefix — `OPENAI_EXTRACTION_MAX_TOKENS` — with the unscoped name as the fallback.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `RUN_STRATEGY` | `unified` | `unified`: reasoning and extraction run as one task per vote, so a retry resamples the reasoning too. `stratified`: separate tasks, with `--reason_before_extract` applying, and a retry re-extracts the same reasoning. Read by `workflows/rerank/main.nf`. |
+| `PROVIDER` | `bedrock` | Backend for both roles: `bedrock` or `openai`. |
+| `REASONING_PROVIDER`, `EXTRACTION_PROVIDER` | `PROVIDER` | Backend for one role. `LLM_PROVIDER`, the old name, is ignored (a warning is logged). |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION` | — | Bedrock credentials (standard AWS configuration also works). |
+| `BEDROCK_MODEL_ID` | `us.anthropic.claude-sonnet-4-20250514-v1:0` | Bedrock model. |
+| `BEDROCK_MAX_TOKENS` | `65536` | Reasoning output cap on Bedrock. |
+| `BEDROCK_THINKING_BUDGET_TOKENS` | `50000` | Reasoning thinking budget on Bedrock. |
+| `OPENAI_BASE_URL` (alias `OPENAI_API_BASE`) | `http://localhost:8080/v1` | OpenAI-compatible endpoint. |
+| `OPENAI_API_KEY` | `sk-no-key-required` | API key; llama.cpp ignores it. |
+| `OPENAI_MODEL` | `local-model` | Served model name. |
+| `OPENAI_MAX_TOKENS` | `65536` | Output cap per call. A reasoning answer that hits it is cut off, and an extraction that hits it fails with exit 142; raise `OPENAI_EXTRACTION_MAX_TOKENS` if extractions keep failing that way. |
+| `OPENAI_TIMEOUT` | `3600` | Seconds per call. |
+| `OPENAI_TEMPERATURE` | server default | Reasoning temperature; keep it above 0 so the votes differ. |
+| `OPENAI_ENABLE_THINKING` | not sent | Reasoning `chat_template_kwargs.enable_thinking` (Qwen3-style templates). |
+| `OPENAI_EXTRACTION_TEMPERATURE` | `0.0` | Extraction temperature. Does not fall back to `OPENAI_TEMPERATURE`. |
+| `OPENAI_EXTRACTION_ENABLE_THINKING` | `false` | Extraction thinking flag. Does not fall back to `OPENAI_ENABLE_THINKING`. |
+| `OPENAI_STRUCTURED_OUTPUT_METHOD` | `json_schema` | How extraction requests structured output: `json_schema`, `function_calling` or `json_mode`. |
+| `OPENAI_EXTRA_BODY` | — | JSON merged into every request body, e.g. `{"top_k": 20}`. |
+| `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` | — | Turn on Langfuse tracing when both are set. |
+| `LANGFUSE_HOST` | Langfuse cloud | Self-hosted Langfuse instance. |
+| `LANGFUSE_TRACING_ENABLED` | `true` | `false` keeps the keys but stops tracing. |
+| `LANGFUSE_TRACING_ENVIRONMENT`, `LANGFUSE_RELEASE` | — | Labels that separate cohorts or versions. |
+| `LANGFUSE_SAMPLE_RATE` | `1` | Fraction of calls traced. |
+| `LANGFUSE_TIMEOUT` | `5` | Seconds a task waits to flush its trace. |
 
 ## Tracing LLM calls with Langfuse
 

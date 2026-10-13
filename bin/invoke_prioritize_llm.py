@@ -82,7 +82,7 @@ def candidate_genes(prompt):
         if "geneSymbol" in table.columns:
             return table["geneSymbol"].dropna().astype(str).str.strip().tolist()
     # Silently accepting nothing here would empty every prioritized CSV, so fail
-    # the task instead (exit 1, which invokeLlms.nf does not retry).
+    # the task instead (exit 1, which extractLlm does not retry).
     raise ValueError("no gene table found in the prompt: expected a ```csv block with a geneSymbol column")
 
 
@@ -108,14 +108,37 @@ def gene_names(entry, candidates=None):
     return [candidates[f.upper()] for f in fragments if f.upper() in candidates]
 
 
-def clean_gene_names(names, candidates=None):
+def entry_genes(name, excerpt=None, candidates=None):
+    """The genes one extracted item ranks: its ``name``, else its ``excerpt``.
+
+    The fallback covers an item whose ``name`` is a tier heading and whose
+    genes went into ``excerpt`` instead ("High Priority (Likely Pathogenic)"
+    with ['TTN', 'PROM1', ...]); those genes take the tier's place in order.
+    """
+    genes = gene_names(name, candidates)
+    if genes or not isinstance(excerpt, (list, tuple)):
+        return genes
+    return [gene for quote in excerpt for gene in gene_names(quote, candidates)]
+
+
+def clean_gene_names(names, candidates=None, excerpts=None):
     """One gene per row: entries naming several genes expand, the rest drop.
+
+    ``excerpts``, aligned with ``names``, is where the genes of an entry whose
+    name has none are looked for (see :func:`entry_genes`).
 
     A gene repeated later in the list -- on its own or inside a multi-gene
     entry -- keeps only its first, best-ranked row.
     """
+    if excerpts is None:
+        excerpts = pd.Series([None] * len(names), index=names.index, dtype=object)
     return (
-        names.map(lambda entry: gene_names(entry, candidates))
+        pd.Series(
+            [entry_genes(n, e, candidates) for n, e in zip(names, excerpts)],
+            index=names.index,
+            name=names.name,
+            dtype=object,
+        )
         .explode()
         .dropna()
         .drop_duplicates(keep="first")
@@ -135,6 +158,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output",
         required=True,
+    )
+    parser.add_argument(
+        "--raw_output",
+        help="where to write the extracted table as the model returned it, "
+        "before clean_gene_names() touches it",
     )
     parser.add_argument(
         "--prompt",
@@ -180,15 +208,19 @@ if __name__ == "__main__":
             generank = llm_provider.structured_output(llm, generank_model(max_results)).with_retry(retry_if_exception_type=retry_on).invoke(ai_content, config=config)
         except Exception as e:
             # Same contract as invoke_reasoning_llm.py: a transient failure that
-            # outlived the in-process retries exits in 137-150 so invokeLlms.nf
-            # reruns the task -- which resamples the reasoning step too, giving
-            # the extraction a different input to work from.
+            # outlived the in-process retries exits in 137-150 so extractLlm
+            # (modules/local/invokeLlms.nf) reruns the task.  The rerun gets the
+            # same reasoning output, not a resampled one.
             exit_code = llm_provider.retry_exit_code(e, llm)
             if exit_code is None:
                 raise
             print(e, file=sys.stderr)
             sys.exit(exit_code)
-    main_content = clean_gene_names(pd.DataFrame(generank.model_dump()['results']).name, candidates).to_csv()
-    
+    # columns= keeps the header when the model returned an empty list.
+    extracted = pd.DataFrame(generank.model_dump()['results'], columns=list(GenerankItem.model_fields))
+    if args.raw_output:
+        extracted.to_csv(args.raw_output)
+    main_content = clean_gene_names(extracted.name, candidates, extracted.excerpt).to_csv()
+
     with open(args.output, "w") as f:
         f.write(main_content)
