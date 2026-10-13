@@ -4,6 +4,11 @@
   "description": "Inputs for the rerank workflow.",
   "type": "object",
   "properties": {
+    "samples_manifest": {
+      "type": "string",
+      "description": "CSV manifest with run_id,genecsv,hpotxt columns; runs every listed sample in one workflow.",
+      "format": "file-path"
+    },
     "genecsv": {
       "type": "string",
       "description": "CSV exported from AI_MARRVEL containing candidate genes.",
@@ -46,13 +51,29 @@
       "default": 10,
       "minimum": 1
     },
+    "min_votes": {
+      "type": "integer",
+      "description": "Minimum surviving LLM votes before a sample is reranked; a sample with fewer is reported and skipped. 0 = a simple majority of invocationnumber_n.",
+      "default": 0,
+      "minimum": 0
+    },
     "run_id": {
       "type": "string",
-      "description": "Namespace for workflow outputs.",
+      "description": "Namespace for workflow outputs. Ignored when --samples_manifest is used, which takes run_id from the manifest.",
       "default": "run1"
+    },
+    "publishDirSuffix": {
+      "type": "string",
+      "description": "Optional suffix for the publish directory, e.g. /udn_100 publishes to published/udn_100/<run_id>/. Must start with '/'.",
+      "default": ""
     }
   },
   "oneOf": [
+    {
+      "required": [
+        "samples_manifest"
+      ]
+    },
     {
       "required": [
         "genecsv",
@@ -66,4 +87,4 @@
       ]
     }
   ]
-  }
+}

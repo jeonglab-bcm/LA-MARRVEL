@@ -26,4 +26,14 @@ process runAIMARRVEL {
         --run_id    ${context.run_id}
 
     """
+
+    stub:
+    """
+    mkdir -p aim_output/${context.run_id}/prediction/final_matrix_expanded
+    cat <<'CSV' > aim_output/${context.run_id}/prediction/final_matrix_expanded/${context.run_id}.gene.csv
+geneSymbol,varId,geneEnsId,zyg,predict,IMPACT_text,Consequence,clinvarSignDesc,CADD_PHRED,gnomadAF
+GENE1,"['1-100-A-T']",ENSG00000000001,het,0.9,HIGH,missense_variant,Pathogenic,25.0,0.0001
+GENE2,"['1-200-C-G']",ENSG00000000002,hom,0.8,MODERATE,missense_variant,Uncertain_significance,18.0,0.001
+CSV
+    """
 }

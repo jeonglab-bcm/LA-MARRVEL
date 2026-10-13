@@ -1,19 +1,18 @@
 process aggregate {
     cpus 1
     tag "$context.run_id"
-    publishDir "published/$context.run_id/reranked_gene", mode: 'copy'
+    publishDir "published${params.publishDirSuffix ?: ''}/$context.run_id/reranked_gene", mode: 'copy'
 
     input:
-    path genecsv, name: "gene.csv"
-    path llmoutputs
-    val context
+    tuple val(context), path(genecsv, name: "gene.csv"), path(llmoutputs)
 
     output:
-    path "./${context.run_id}.improved.reranked.gene.csv"
+    tuple val(context), path("./${context.run_id}.improved.reranked.gene.csv")
 
     script:
     """
-    #!/usr/bin/env python
+    #!${moduleDir}/../../.venv/bin/python
+    import glob
     import pandas as pd
     import numpy as np
 
@@ -91,6 +90,21 @@ process aggregate {
 
         return order
 
+    def vote_paths():
+        '''The prioritized CSVs that were actually staged, in iteration order.
+
+        invokeLlms runs with errorStrategy 'ignore', so a vote it could not
+        produce is simply absent and the surviving iteration numbers can have
+        gaps in them -- reading 0..N-1 blindly would raise on the first gap.
+        main.nf has already refused any sample with too few of them.
+        '''
+        paths = glob.glob("${context.run_id}.prioritized.*.csv")
+        return sorted(
+            paths,
+            key=lambda path: int(path.split(".prioritized.")[1].split(".csv")[0]),
+        )
+
+
     def get_reranked_genedf():
         N = $context.invocationnumber_n
         G = $context.consideringgenes_g
@@ -107,8 +121,11 @@ process aggregate {
 
         # Build COMPLETE ballots for Tideman: prioritized list + remaining genes in original order
         ballots = []
-        for i in range(N):
-            df_i = pd.read_csv(f"${context.run_id}.prioritized.{i}.csv")
+        paths = vote_paths()
+        if len(paths) < N:
+            print(f"${context.run_id}: ranking on {len(paths)}/{N} votes")
+        for i, path in enumerate(paths):
+            df_i = pd.read_csv(path)
             order = df_i["name"].drop_duplicates(keep='first').tolist()
             full_order = order + [c for c in candidates if c not in order]
 

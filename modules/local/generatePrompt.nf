@@ -1,20 +1,18 @@
 process generatePrompt {
     cpus 1
 
-    publishDir "published/$context.run_id/prompt", mode: 'copy'
+    publishDir "published${params.publishDirSuffix ?: ''}/$context.run_id/prompt", mode: 'copy'
     tag "$context.run_id"
 
     input:
-    path hpodf, name: 'hpodf.csv'
-    path genecsv, name: 'genedf.csv'
-    val context
+    tuple val(context), path(hpodf, name: 'hpodf.csv'), path(genecsv, name: 'genedf.csv')
 
     output:
-    path "./${context.run_id}.prompt.md"
+    tuple val(context), path("./${context.run_id}.prompt.md")
 
     script:
     """
-    #!/usr/bin/env python
+    #!${moduleDir}/../../.venv/bin/python
 
     import pandas as pd
 

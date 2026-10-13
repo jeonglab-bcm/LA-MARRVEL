@@ -3,16 +3,15 @@ process improveGeneCsv {
     tag "$context.run_id"
 
     input:
-    path genecsv, name: "gene.csv"
+    tuple val(context), path(genecsv, name: "gene.csv")
     path gene_omim_json, name: "gene_omim.json"
-    val context
 
     output:
-    path "./${context.run_id}.improved.gene.csv"
+    tuple val(context), path("./${context.run_id}.improved.gene.csv")
 
     script:
     """
-    #!/usr/bin/env python
+    #!${moduleDir}/../../.venv/bin/python
     import pandas as pd
     import json
     import ast
@@ -51,5 +50,27 @@ process improveGeneCsv {
         genedf['isTransHeterozygote'] = genedf.varId.apply(lambda x: "Yes" if len(ast.literal_eval(x)) > 1 else "No")
 
         genedf.to_csv("${context.run_id}.improved.gene.csv")
+    """
+
+    stub:
+    """
+    #!${moduleDir}/../../.venv/bin/python
+    import csv
+
+    with open("gene.csv", newline="") as fh:
+        reader = csv.DictReader(fh)
+        input_fieldnames = reader.fieldnames or []
+        rows = list(reader)
+
+    out_fields = list(dict.fromkeys(input_fieldnames + ["phenoDict", "isTransHeterozygote"]))
+
+    for row in rows:
+        row.setdefault("phenoDict", "{}")
+        row.setdefault("isTransHeterozygote", "No")
+
+    with open("${context.run_id}.improved.gene.csv", "w", newline="") as out:
+        writer = csv.DictWriter(out, fieldnames=out_fields)
+        writer.writeheader()
+        writer.writerows(rows)
     """
 }

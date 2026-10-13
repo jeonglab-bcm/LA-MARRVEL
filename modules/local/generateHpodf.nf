@@ -5,15 +5,14 @@ process generateHpodf {
     tag "$context.run_id"
 
     input:
-    path inputhpo, name: 'input.hpos.txt'
-    val context
+    tuple val(context), path(inputhpo, name: 'input.hpos.txt')
 
     output:
-    path "./${context.run_id}.hpodf.csv"
+    tuple val(context), path("./${context.run_id}.hpodf.csv")
 
     script:
     """
-    #!/usr/bin/env python
+    #!${moduleDir}/../../.venv/bin/python
 
     import pandas as pd
     import json
@@ -34,5 +33,27 @@ process generateHpodf {
         wholehpodf = get_wholehpodf("${projectDir}/resources/hp.json")
         hpodf = pd.read_csv("${inputhpo}", header=None, names=["id"]).merge(wholehpodf, on="id", how="left")
         hpodf.to_csv("./${context.run_id}.hpodf.csv", index=False)
+    """
+
+    stub:
+    """
+    #!${moduleDir}/../../.venv/bin/python
+    import csv
+    from pathlib import Path
+
+    ids = [line.strip() for line in Path("input.hpos.txt").read_text().splitlines() if line.strip()]
+    if not ids:
+        ids = ["HP:STUB"]
+
+    with open("${context.run_id}.hpodf.csv", "w", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["id", "name", "synonyms", "definition"])
+        writer.writeheader()
+        for hp_id in ids:
+            writer.writerow({
+                "id": hp_id,
+                "name": f"Stub term for {hp_id}",
+                "synonyms": "[]",
+                "definition": "Stub definition produced with -stub-run"
+            })
     """
 }
