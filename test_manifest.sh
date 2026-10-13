@@ -9,7 +9,7 @@ nextflow run workflows/generate_manifest \
     --hpotxtGlob  "${INPUT_DIR}/*/hpos.txt" \
     --outfile manifest/samples_manifest.csv
 
-nextflow run workflows/rerank \
+nextflow run workflows/la_marrvel \
     -resume \
     --samples_manifest manifest/samples_manifest.csv \
     --consideringgenes_g 100 \

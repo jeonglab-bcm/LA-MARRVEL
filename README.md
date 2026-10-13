@@ -1,6 +1,6 @@
-# Rerank Workflow
+# LA_MARRVEL Workflow
 
-This repository contains a Nextflow pipeline (`workflows/rerank`) that enriches candidate genes with phenotype metadata, generates structured LLM prompts, gathers multiple AI-driven prioritizations, and aggregates them into a consensus gene ranking for rare disease analysis.
+This repository contains a Nextflow pipeline (`workflows/la_marrvel`) that enriches candidate genes with phenotype metadata, generates structured LLM prompts, gathers multiple AI-driven prioritizations, and aggregates them into a consensus gene ranking for rare disease analysis.
 
 ## Requirements
 - Nextflow 23.10+ and a Python 3.11 runtime available on worker nodes.
@@ -25,7 +25,7 @@ The workflow takes either one sample on the command line, or many samples from a
 
 Optional arguments:
 - `--ref_ver`: Reference version of the VCF file (`hg19`, `hg38`). Default: `hg19`
-- `--genecsv`: Gene table output of AI MARRVEL. If provided, the workflow skips AI MARRVEL and only runs the rerank portion.
+- `--genecsv`: Gene table output of AI MARRVEL. If provided, the workflow skips AI MARRVEL and only runs the LA_MARRVEL LLM portion.
 - `--consideringgenes_g`: Top-N genes per prompt. Default: `100`
 - `--invocationnumber_n`: Number of LLM votes. Default: `10`
 - `--aim_store_dir`: Store location where AI MARRVEL will be installed within the workflow. Default: `./aim_store`
@@ -40,7 +40,7 @@ How the LLM steps run is set by the `RUN_STRATEGY` environment variable rather t
 ## Running
 The following command is an example run using included vcf and hpo term files.
 ```bash
-nextflow run workflows/rerank \
+nextflow run workflows/la_marrvel \
     --input_vcf "example/demo.vcf.gz" \
     --ref_ver "hg19" \
     --hpostxt "example/demo.hpos.txt" \
@@ -61,7 +61,7 @@ nextflow run workflows/generate_manifest \
     --hpotxtGlob  "/path/to/input/*/hpos.txt" \
     --outfile manifest/samples_manifest.csv
 
-nextflow run workflows/rerank \
+nextflow run workflows/la_marrvel \
     --samples_manifest manifest/samples_manifest.csv \
     --consideringgenes_g 100 \
     --invocationnumber_n 10 \
@@ -90,10 +90,10 @@ Cohort runs are worth a look at `maxForks` in `modules/local/invokeLlms.nf`, whi
 
 ### Resuming an interrupted run
 
-`-resume` reuses the cached non-LLM stages, but the LLM processes (`invokeLlms`, `reasonLlm`, `extractLlm`) are never cached (`workflows/rerank/nextflow.config`), because each call is a fresh sample. To pick an interrupted run up without repeating finished LLM calls, rerun it with the same `--publishDirSuffix` and `--reuse_published_votes true`:
+`-resume` reuses the cached non-LLM stages, but the LLM processes (`invokeLlms`, `reasonLlm`, `extractLlm`) are never cached (`workflows/la_marrvel/nextflow.config`), because each call is a fresh sample. To pick an interrupted run up without repeating finished LLM calls, rerun it with the same `--publishDirSuffix` and `--reuse_published_votes true`:
 
 ```bash
-nextflow run workflows/rerank -resume \
+nextflow run workflows/la_marrvel -resume \
     --samples_manifest manifest/samples_manifest.csv \
     --publishDirSuffix /cohort_g100 \
     --reuse_published_votes true
@@ -109,7 +109,7 @@ Votes already published are copied; only the missing ones call the model. To red
 Each stage below runs once per sample, keyed on `run_id`; with a manifest they run concurrently.
 
 1. **generateHpodf** – maps supplied HPO IDs onto labels/definitions using `resources/hp.json`.
-1. **improveGeneCsv** – augments the gene table with HGNC/OMIM phenotypes, inheritance metadata, and `isTransHeterozygote` flags via the cached resources in `workflows/rerank/resources`.
+1. **improveGeneCsv** – augments the gene table with HGNC/OMIM phenotypes, inheritance metadata, and `isTransHeterozygote` flags via the cached resources in `workflows/la_marrvel/resources`.
 1. **generatePrompt** – builds a markdown prompt that embeds the curated HPO and gene tables (limited to the first `g` genes).
 1. **reasonLlm** – for each prompt iteration, calls `bin/invoke_reasoning_llm.py` to obtain a long-form analysis. With `--reason_before_extract` (the default) every reasoning call finishes before the first extraction starts, which saves model swaps when both models are served from one llama-swap host; `--reason_before_extract false` lets each vote go on to extraction as soon as its reasoning is done.
 1. **extractLlm** – calls `bin/invoke_prioritize_llm.py` on each reasoning output to extract an ordered list of genes, which is cleaned to one gene symbol per row before it is written: entries naming several genes are split, each name is matched against the gene table in that run's own prompt, and repeats keep only their first, best-ranked row — so headings, commentary, and genes the model invented are dropped. Both scripts get their chat model from `bin/llm_provider.py`, which builds a Bedrock or an OpenAI-compatible client for each role independently (settings loaded through `.env`/environment variables). Both calls are traced through `bin/llm_tracing.py` when Langfuse is configured.
@@ -149,7 +149,7 @@ llama-server -hf <org>/<repo> --jinja --reasoning-format deepseek -c 32768 --por
 export PROVIDER=openai
 export OPENAI_BASE_URL="http://<llama-server-host>:8080/v1"
 export OPENAI_MODEL="<served model name>"   # llama.cpp accepts any name
-nextflow run workflows/rerank --input_vcf ... --hpostxt ...
+nextflow run workflows/la_marrvel --input_vcf ... --hpostxt ...
 ```
 
 Notes on this path:
@@ -172,7 +172,7 @@ export EXTRACTION_PROVIDER=bedrock
 export BEDROCK_EXTRACTION_MODEL_ID="us.anthropic.claude-sonnet-4-20250514-v1:0"
 # plus the usual AWS_* credentials
 
-nextflow run workflows/rerank --input_vcf ... --hpostxt ...
+nextflow run workflows/la_marrvel --input_vcf ... --hpostxt ...
 ```
 
 Both SDKs must be installed for a mixed run; `requirements.txt` already lists them. Structured-output binding and retry classification follow the model that is actually in use, so each role keeps its own provider's conventions.
@@ -185,7 +185,7 @@ Read from the shell environment or from `.env` at the repository root; a real en
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `RUN_STRATEGY` | `unified` | `unified`: reasoning and extraction run as one task per vote, so a retry resamples the reasoning too. `stratified`: separate tasks, with `--reason_before_extract` applying, and a retry re-extracts the same reasoning. Read by `workflows/rerank/main.nf`. |
+| `RUN_STRATEGY` | `unified` | `unified`: reasoning and extraction run as one task per vote, so a retry resamples the reasoning too. `stratified`: separate tasks, with `--reason_before_extract` applying, and a retry re-extracts the same reasoning. Read by `workflows/la_marrvel/main.nf`. |
 | `PROVIDER` | `bedrock` | Backend for both roles: `bedrock` or `openai`. |
 | `REASONING_PROVIDER`, `EXTRACTION_PROVIDER` | `PROVIDER` | Backend for one role. `LLM_PROVIDER`, the old name, is ignored (a warning is logged). |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION` | — | Bedrock credentials (standard AWS configuration also works). |
@@ -219,14 +219,14 @@ export LANGFUSE_PUBLIC_KEY="pk-lf-..."
 export LANGFUSE_SECRET_KEY="sk-lf-..."
 export LANGFUSE_HOST="https://cloud.langfuse.com"   # or your self-hosted instance
 
-nextflow run workflows/rerank --samples_manifest manifest/samples_manifest.csv
+nextflow run workflows/la_marrvel --samples_manifest manifest/samples_manifest.csv
 ```
 
 With either key unset the pipeline behaves exactly as before and reports nothing, so a `.env` without these variables needs no change.
 
 How a run shows up in Langfuse:
 
-- One trace per model call, named `la_marrvel_rerank.reasoning` or `la_marrvel_rerank.extraction`, carrying the prompt, the response, token usage, and latency.
+- One trace per model call, named `la_marrvel.reasoning` or `la_marrvel.extraction`, carrying the prompt, the response, token usage, and latency.
 - The sample's `run_id` is the **session id**, so a sample's `invocationnumber_n` votes and their extraction passes are grouped together.
 - Each trace is tagged with its role and backend (`reasoning`/`extraction`, `bedrock`/`openai`) and records the `iteration` number and model id as metadata — enough to compare vote-to-vote variation, or one provider against the other, from the Langfuse UI.
 
@@ -260,7 +260,7 @@ Note: [AI-MARRVEL](https://github.com/LiuzLab/AI_MARRVEL), which is fetched and 
 
 ### Third-Party Data
 
-The files under `workflows/rerank/resources/` are redistributed snapshots of publicly available biomedical databases:
+The files under `workflows/la_marrvel/resources/` are redistributed snapshots of publicly available biomedical databases:
 
 | File | Source | Version/Download | License |
 |------|--------|--------------|---------|
