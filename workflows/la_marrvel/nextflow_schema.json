@@ -34,6 +34,31 @@
       "description": "Directory where AI-MARRVEL stores its outputs.",
       "format": "directory-path"
     },
+    "aim_repo": {
+      "type": "string",
+      "default": "https://github.com/LiuzLab/AI_MARRVEL",
+      "description": "Git repository AI-MARRVEL is cloned from, e.g. https://github.com/hyunhwan-bcm/AI_MARRVEL."
+    },
+    "aim_version": {
+      "type": "string",
+      "default": "v1.2.0-rc260512",
+      "description": "Tag, branch or commit SHA of aim_repo to run."
+    },
+    "aim_native": {
+      "type": "boolean",
+      "default": false,
+      "description": "Run AI-MARRVEL in its pixi environments instead of Singularity (needs pixi and an AIM checkout with native/native.config, such as the hyunhwan-bcm fork)."
+    },
+    "aim_repo_dir": {
+      "type": "string",
+      "description": "Existing AI-MARRVEL checkout to run instead of cloning aim_repo. With aim_native, its pixi environments must already be installed.",
+      "format": "directory-path"
+    },
+    "aim_ref_dir": {
+      "type": "string",
+      "description": "Existing AI-MARRVEL reference data directory to use instead of syncing it from S3 into aim_store_dir.",
+      "format": "directory-path"
+    },
     "hpostxt": {
       "type": "string",
       "description": "Text file listing proband HPO IDs (one per line).",
