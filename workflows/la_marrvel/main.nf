@@ -119,7 +119,7 @@ workflow {
     else {
         log.info "No --genecsv provided, generating from --input_vcf via AIMARRVEL..."
         log.info "AIMARRVEL outputs will be stored in ${params.aim_store_dir}"
-        log.info "AIMARRVEL: ${params.aim_repo_dir ?: "${params.aim_repo} @ ${params.aim_version}"}, ${params.aim_native ? 'native' : 'singularity'}"
+        log.info "AIMARRVEL: ${params.aim_repo_dir ?: "${params.aim_repo} @ ${params.aim_version}"}, ${params.aim_native ? 'native' : "profile ${params.aim_profile}"}"
 
         aim_context = base_context + ["run_id": params.run_id]
         aim_hpostxt = file(params.hpostxt, checkIfExists: true)

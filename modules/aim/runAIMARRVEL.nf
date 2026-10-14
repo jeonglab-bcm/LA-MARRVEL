@@ -14,9 +14,15 @@ process runAIMARRVEL {
     def expanded = "aim_output/${context.run_id}/prediction/final_matrix_expanded"
     // Singularity (default) runs the AIM release containers; native runs them
     // in the checkout's pixi environments, for hosts without a container engine.
+    // aim_profile 'none' passes no -profile, for releases without profiles
+    // (v1.0.0 is Docker-only and rejects -profile singularity). A bare
+    // `--aim_profile ''` arrives as true, so it means none as well.
+    def engine = params.aim_profile instanceof String && params.aim_profile && params.aim_profile != 'none'
+        ? " -profile ${params.aim_profile}"
+        : ''
     def aim_profile = params.aim_native
         ? "-c \${FULL_AIM_REPO}/native/native.config run \${FULL_AIM_REPO}/main.nf -profile debug"
-        : "run \${FULL_AIM_REPO} -profile singularity --skip_ref_sync"
+        : "run \${FULL_AIM_REPO}${engine} --skip_ref_sync"
     // Native mode runs every AIM process in the checkout's pixi environments
     // (native/README.md in the AIM repo). Conda prefixes are not relocatable,
     // so they are installed here, in the checkout's final location, rather than
@@ -38,7 +44,13 @@ process runAIMARRVEL {
 
     # AIM v1.2 writes the gene table itself; earlier releases (v1.1.x and the
     # hyunhwan-bcm fork) stop at the transcript-level matrix, so collapse it here.
+    # v1.0.0 writes that matrix but does not publish it, so take it from the
+    # PREDICTION task in AIM's work directory.
     if [[ ! -s ${expanded}/${context.run_id}.gene.csv ]]; then
+        if [[ ! -s ${expanded}/${context.run_id}.expanded.csv.gz ]]; then
+            mkdir -p ${expanded}
+            cp "\$(ls -t work/*/*/final_matrix_expanded/${context.run_id}.expanded.csv.gz | head -1)" ${expanded}/
+        fi
         $moduleDir/../../bin/aim_gene_table.py \
             --input ${expanded}/${context.run_id}.expanded.csv.gz \
             --output ${expanded}/${context.run_id}.gene.csv

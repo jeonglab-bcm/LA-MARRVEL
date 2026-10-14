@@ -49,6 +49,11 @@
       "default": false,
       "description": "Run AI-MARRVEL in its pixi environments instead of Singularity (needs pixi and an AIM checkout with native/native.config, such as the hyunhwan-bcm fork)."
     },
+    "aim_profile": {
+      "type": "string",
+      "default": "singularity",
+      "description": "AI-MARRVEL profile that picks its container engine, e.g. 'docker'. 'none' passes no -profile, for releases without profiles such as v1.0.0 (Docker only). Ignored with aim_native."
+    },
     "aim_repo_dir": {
       "type": "string",
       "description": "Existing AI-MARRVEL checkout to run instead of cloning aim_repo.",
@@ -58,6 +63,11 @@
       "type": "string",
       "description": "Existing AI-MARRVEL reference data directory to use instead of syncing it from S3 into aim_store_dir.",
       "format": "directory-path"
+    },
+    "aim_ref_bucket": {
+      "type": "string",
+      "default": "aim-data-dependencies-2.4-public",
+      "description": "Public S3 bucket the AI-MARRVEL reference data is synced from; v1.0.0 uses aim-data-dependencies-2.0-public."
     },
     "aim_args": {
       "type": "string",

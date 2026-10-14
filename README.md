@@ -32,8 +32,10 @@ Optional arguments:
 - `--aim_repo`: Git repository AI MARRVEL is cloned from. Default: `https://github.com/LiuzLab/AI_MARRVEL`
 - `--aim_version`: Tag, branch or commit SHA of `--aim_repo` to run. Default: `v1.2.0-rc260512`
 - `--aim_native`: Run AI MARRVEL in its pixi environments instead of Singularity, for hosts without a container engine (macOS). Needs a release that ships `native/native.config`, such as [hyunhwan-bcm/AI_MARRVEL](https://github.com/hyunhwan-bcm/AI_MARRVEL). Default: `false`
+- `--aim_profile`: AI MARRVEL profile that picks its container engine, e.g. `docker` for v1.1+. Pass `none` for v1.0.0, which has no profiles and always runs Docker. Ignored with `--aim_native`. Default: `singularity`
 - `--aim_repo_dir`: Existing AI MARRVEL checkout to run instead of cloning `--aim_repo`.
 - `--aim_ref_dir`: Existing AI MARRVEL reference data directory to use instead of syncing it from S3.
+- `--aim_ref_bucket`: Public S3 bucket the reference data is synced from when `--aim_ref_dir` is not given. v1.0.0 needs `aim-data-dependencies-2.0-public` (its models and OMIM/HPO tables differ from 2.4). Default: `aim-data-dependencies-2.4-public`
 - `--aim_args`: Extra arguments appended to the AI MARRVEL `nextflow run` command, e.g. the fork's `--rust true --aim_bin ... --rust_refs ... --rust_models ... --vep_store ...`.
 - `--run_id`: Namespace for outputs. Single-sample mode only. Default: `run1`
 - `--publishDirSuffix`: Extra level under `published/`, e.g. `/udn_100` publishes to `published/udn_100/<run_id>/`. Must start with `/`. Use it to keep cohorts or parameter sweeps from overwriting each other when the same `run_id` appears in more than one run.
@@ -109,9 +111,9 @@ Votes already published are copied; only the missing ones call the model. To red
 
 ## Pipeline stages
 1. **AI MARRVEL PORTION** (these parts are skipped if gene table `gene_csv` is supplied)
-    1. **installAIMARRVELDeps** - downloads AI MARRVEL dependency files (reference genomes, etc) from aws S3 bucket. Stores in `aim_store_dir` and doesn't rerun automatically. Skipped with `--aim_ref_dir`.
-    1. **cloneAIMARRVEL** - clones `--aim_repo` at `--aim_version` (default LiuzLab `v1.2.0-rc260512`), and with `--aim_native` installs its pixi environments. Stores in `aim_store_dir` and doesn't rerun automatically, so use a fresh `aim_store_dir` when changing version. Skipped with `--aim_repo_dir`.
-    1. **runAIMARRVEL** - runs the AI MARRVEL workflow using the Singularity profile (or natively with `--aim_native`) and produces the gene table. Releases that stop at the transcript-level `<run_id>.expanded.csv.gz` (v1.1.x and the hyunhwan-bcm fork) have it collapsed into the gene table by `bin/aim_gene_table.py`, which matches what v1.2 writes itself.
+    1. **installAIMARRVELDeps** - downloads AI MARRVEL dependency files (reference genomes, etc) from the `--aim_ref_bucket` S3 bucket (about 519 GiB). Stores in `aim_store_dir` and doesn't rerun automatically. Skipped with `--aim_ref_dir`.
+    1. **cloneAIMARRVEL** - clones `--aim_repo` at `--aim_version` (default LiuzLab `v1.2.0-rc260512`). With `--aim_native`, its pixi environments are installed by runAIMARRVEL, in the checkout's final location. Stores in `aim_store_dir` and doesn't rerun automatically, so use a fresh `aim_store_dir` when changing version. Skipped with `--aim_repo_dir`.
+    1. **runAIMARRVEL** - runs the AI MARRVEL workflow using the `--aim_profile` profile (or natively with `--aim_native`) and produces the gene table. Releases that stop at the transcript-level `<run_id>.expanded.csv.gz` (v1.0.0, v1.1.x and the hyunhwan-bcm fork) have it collapsed into the gene table by `bin/aim_gene_table.py`, which matches what v1.2 writes itself. v1.0.0 does not publish that file, so it is taken from AIM's work directory. v1.0.0 also expects `vep/hg19/new_tabbed_revel_grch37.tsv.gz` (and `.tbi`), which its bucket names `new_tabbed_revel.tsv.gz`; link it under the expected name in `--aim_ref_dir` for hg19 runs.
 Each stage below runs once per sample, keyed on `run_id`; with a manifest they run concurrently.
 
 1. **generateHpodf** – maps supplied HPO IDs onto labels/definitions using `resources/hp.json`.
