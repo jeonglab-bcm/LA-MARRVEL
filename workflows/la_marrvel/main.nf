@@ -119,17 +119,32 @@ workflow {
     else {
         log.info "No --genecsv provided, generating from --input_vcf via AIMARRVEL..."
         log.info "AIMARRVEL outputs will be stored in ${params.aim_store_dir}"
+        log.info "AIMARRVEL: ${params.aim_repo_dir ?: "${params.aim_repo} @ ${params.aim_version}"}, ${params.aim_native ? 'native' : "profile ${params.aim_profile}"}"
 
         aim_context = base_context + ["run_id": params.run_id]
         aim_hpostxt = file(params.hpostxt, checkIfExists: true)
 
-        installAIMARRVELDeps(aim_context)
-        cloneAIMARRVEL(aim_context)
+        // An existing AIM checkout or reference data directory is used as is
+        // instead of being cloned or synced into aim_store_dir.
+        if (params.aim_repo_dir) {
+            aim_repo = Channel.value(file(params.aim_repo_dir, checkIfExists: true))
+        }
+        else {
+            cloneAIMARRVEL(aim_context)
+            aim_repo = cloneAIMARRVEL.out.aimrepo
+        }
+        if (params.aim_ref_dir) {
+            aim_data = Channel.value(file(params.aim_ref_dir, checkIfExists: true))
+        }
+        else {
+            installAIMARRVELDeps(aim_context)
+            aim_data = installAIMARRVELDeps.out.aimdata
+        }
         genecsv = runAIMARRVEL(
-            cloneAIMARRVEL.out.aimrepo,
-            installAIMARRVELDeps.out.aimdata,
-            params.input_vcf,
-            params.hpostxt,
+            aim_repo,
+            aim_data,
+            file(params.input_vcf, checkIfExists: true),
+            aim_hpostxt,
             aim_context
         )
 

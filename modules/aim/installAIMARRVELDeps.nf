@@ -10,6 +10,6 @@ process installAIMARRVELDeps {
 
     script:
     """
-    aws s3 sync s3://aim-data-dependencies-2.4-public aimdata --no-sign-request
+    aws s3 sync s3://${params.aim_ref_bucket} aimdata --no-sign-request
     """
 }

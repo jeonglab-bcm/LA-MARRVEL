@@ -1,6 +1,6 @@
 # Manifest format
 
-Passed to the rerank workflow as `--samples_manifest`.
+Passed to the LA_MARRVEL workflow (`workflows/la_marrvel`) as `--samples_manifest`.
 
 Required columns:
 - `run_id` — output namespace for the sample; must be unique within the manifest

@@ -1,4 +1,4 @@
-"""Chat model factories for the rerank LLM steps.
+"""Chat model factories for the LA_MARRVEL LLM steps.
 
 The provider is selected per role, so the long-form reasoning step and the
 structured extraction step can run on different backends (e.g. reasoning on a

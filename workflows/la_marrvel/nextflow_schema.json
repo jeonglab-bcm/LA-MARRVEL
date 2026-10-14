@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "LA_MARRVEL_RERANK parameters",
-  "description": "Inputs for the rerank workflow.",
+  "title": "LA_MARRVEL parameters",
+  "description": "Inputs for the LA_MARRVEL workflow.",
   "type": "object",
   "properties": {
     "samples_manifest": {
@@ -33,6 +33,46 @@
       "default": "./aim_store",
       "description": "Directory where AI-MARRVEL stores its outputs.",
       "format": "directory-path"
+    },
+    "aim_repo": {
+      "type": "string",
+      "default": "https://github.com/LiuzLab/AI_MARRVEL",
+      "description": "Git repository AI-MARRVEL is cloned from, e.g. https://github.com/hyunhwan-bcm/AI_MARRVEL."
+    },
+    "aim_version": {
+      "type": "string",
+      "default": "v1.2.0-rc260512",
+      "description": "Tag, branch or commit SHA of aim_repo to run."
+    },
+    "aim_native": {
+      "type": "boolean",
+      "default": false,
+      "description": "Run AI-MARRVEL in its pixi environments instead of Singularity (needs pixi and an AIM checkout with native/native.config, such as the hyunhwan-bcm fork)."
+    },
+    "aim_profile": {
+      "type": "string",
+      "default": "singularity",
+      "description": "AI-MARRVEL profile that picks its container engine, e.g. 'docker'. 'none' passes no -profile, for releases without profiles such as v1.0.0 (Docker only). Ignored with aim_native."
+    },
+    "aim_repo_dir": {
+      "type": "string",
+      "description": "Existing AI-MARRVEL checkout to run instead of cloning aim_repo.",
+      "format": "directory-path"
+    },
+    "aim_ref_dir": {
+      "type": "string",
+      "description": "Existing AI-MARRVEL reference data directory to use instead of syncing it from S3 into aim_store_dir.",
+      "format": "directory-path"
+    },
+    "aim_ref_bucket": {
+      "type": "string",
+      "default": "aim-data-dependencies-2.4-public",
+      "description": "Public S3 bucket the AI-MARRVEL reference data is synced from; v1.0.0 uses aim-data-dependencies-2.0-public."
+    },
+    "aim_args": {
+      "type": "string",
+      "default": "",
+      "description": "Extra arguments appended to the AI-MARRVEL nextflow command, e.g. '--rust true --aim_bin /path/to/aim ...' for the hyunhwan-bcm fork."
     },
     "hpostxt": {
       "type": "string",

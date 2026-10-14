@@ -1,4 +1,4 @@
-"""Optional Langfuse tracing for the rerank LLM steps.
+"""Optional Langfuse tracing for the LA_MARRVEL LLM steps.
 
 Every model call in :mod:`invoke_reasoning_llm` and :mod:`invoke_prioritize_llm`
 runs inside :func:`trace`, which hands the call a LangChain ``config`` carrying
@@ -23,7 +23,7 @@ import contextlib
 import os
 import sys
 
-PIPELINE = "la_marrvel_rerank"
+PIPELINE = "la_marrvel"
 
 _TRUE = ("1", "true", "yes", "on")
 _FALSE = ("0", "false", "no", "off")
